@@ -2,6 +2,7 @@
 test*
 edgedriver_mac64_m1/*
 .DS_store
+log*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
