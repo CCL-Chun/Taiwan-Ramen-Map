@@ -1,3 +1,8 @@
+# only for test
+test*
+edgedriver_mac64_m1/*
+.DS_store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
