@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Map Example</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+</head>
+<body>
+    <div id="map" style="height: 800px;"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+    <script>
+        var map = L.map('map').setView([25.0336752, 121.5648831], 15); // initialize the map
+
+        L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', 
+            {
+                maxZoom : 24,
+                attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }
+        ).addTo(map);
+
+        L.marker([25.0336752, 121.5648831]).addTo(map)
+            .bindPopup('A pretty CSS3 popup.<br> Easily customizable.')
+            .openPopup();
+
+        var ramen_geojson = {{ ramen_geojson|tojson|safe }};
+        L.geoJSON(ramen_geojson, {
+            onEachFeature: function (feature, layer) {
+                if (feature.properties) {
+                    var popupContent = feature.properties.name +
+                                '<br>' + feature.properties.weekday + feature.properties.open +
+                                '<br>評分: ' + feature.properties.overall + ' / 5'+
+                                '<br>' + feature.properties.address;
+                    layer.bindPopup(popupContent);
+                }
+            }
+        }).addTo(map);
+    </script>
+</body>
+</html>
