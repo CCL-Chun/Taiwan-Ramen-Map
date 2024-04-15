@@ -32,21 +32,28 @@ ogr.UseExceptions()
 # initialize the transformer for TWD97 to WGS84 conversion
 transformer = Transformer.from_crs("EPSG:3826", "EPSG:4326")
 
+# batch insert for RAM management
+# batch size 3000 need 9 mins on Mac M1
+batch_size = 3000
+
 try:
     driver = ogr.GetDriverByName('ESRI Shapefile')
-    # file download from https://data.gov.tw/dataset/128290
+    # file download from https://data.gov.tw/dataset/128290 and https://data.gov.tw/dataset/128288
     shapefile = driver.Open('')
     if shapefile is None:
         raise ValueError("Could not open the input shapefile.")
     layer = shapefile.GetLayer()
 
     features = []
+    loop_counter = 0
 
+    # Geodetic transformer loop through data
     for feature in layer:
         # convert layer feature's geometry as JSON to read
         geometry = json.loads(feature.GetGeometryRef().ExportToJson())
 
         # transform the coordinates
+        # handle Point location
         if geometry['type'] == 'MultiPoint':
             geometry['type'] = "Point"
             for coords in geometry['coordinates']:
@@ -54,6 +61,31 @@ try:
                 lat, lon = transformer.transform(x, y)
                 new_coords = [lon, lat]
             geometry['coordinates'] = new_coords
+
+        # handle Polygon location
+        if geometry['type'] == 'Polygon':
+            new_polygon = []
+            new_polygon.append([])
+            for polygon in geometry['coordinates']:
+                for coords in polygon:
+                    x, y = coords
+                    lat, lon = transformer.transform(x, y)
+                    new_polygon[0].append([lon, lat])
+            geometry['coordinates'] = new_polygon
+
+        # handle MultiPolygon location
+        if geometry['type'] == 'MultiPolygon':
+            new_multipolygon = []
+            for multipolygon in geometry['coordinates']:
+                new_polygon = []
+                new_polygon.append([])
+                for polygon in multipolygon:
+                    for coords in polygon:
+                        x, y = coords
+                        lat, lon = transformer.transform(x, y)
+                        new_polygon[0].append([lon, lat])
+                new_multipolygon.append(new_polygon)
+            geometry['coordinates'] = new_multipolygon
 
         # get the feature's attributes (other info)
         properties = {}
@@ -69,12 +101,21 @@ try:
 
         # append to list for bulk insertion
         features.append(geojson_feature)
+        loop_counter += 1
 
-    # bulk insert into MongoDB
+        if loop_counter % batch_size == 0:
+            try:
+                collection.insert_many(features)
+                logging.info(f"Inserted {len(features)} parking features into MongoDB. Total {loop_counter} features")
+                features = []
+            except Exception as e:
+                logging.error(f"Insert error: {e}")
+
+    # final check bulk insert into MongoDB
     if features:
         try:
             collection.insert_many(features)
-            logging.info(f"Inserted {len(features)} parking features into MongoDB.")
+            logging.info(f"Inserted {len(features)} parking features into MongoDB. Total {loop_counter} features")
         except Exception as e:
             logging.error(f"Insert error: {e}")
 
