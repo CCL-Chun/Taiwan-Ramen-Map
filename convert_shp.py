@@ -18,7 +18,7 @@ try:
     password = os.getenv("MongoDB_password")
     cluster_url = os.getenv("MongoDB_cluster_url")
     uri = f"mongodb+srv://{username}:{password}@{cluster_url}?retryWrites=true&w=majority&appName=ramen-taiwan"
-    client = MongoClient(uri, server_api=ServerApi('1')) # Create a new client and connect to the server
+    client = MongoClient(uri, server_api=ServerApi('1')) # create a new client and connect to the server
     db = client['ramen-taiwan']
     collection = db['parking_info']
     collection.create_index([("geometry", "2dsphere")])
@@ -48,11 +48,11 @@ try:
 
         # transform the coordinates
         if geometry['type'] == 'MultiPoint':
-            new_coords = []
+            geometry['type'] = "Point"
             for coords in geometry['coordinates']:
                 x, y = coords
                 lat, lon = transformer.transform(x, y)
-                new_coords.append([lon, lat])
+                new_coords = [lon, lat]
             geometry['coordinates'] = new_coords
 
         # get the feature's attributes (other info)
@@ -62,7 +62,7 @@ try:
 
         # create a GeoJSON feature
         geojson_feature = {
-            'type': 'parking_lot',
+            'type': 'Feature', # must be Feature here for GeoJSON
             'geometry': geometry,
             'properties': properties
         }
