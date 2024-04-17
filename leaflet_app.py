@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request
+from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
@@ -39,6 +40,9 @@ except Exception as e:
     logging.error(f"Cannot connect to MongoDB!{e}")
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
+
 
 @app.route("/")
 def first_view():
@@ -109,6 +113,23 @@ def get_parking():
 
     return jsonify(parking_data)
 
+# Handle the connection
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+# Handle custom connect event from client
+@socketio.on('connect_event')
+def handle_custom_connect_event(json):
+    print('Received connect_event: ' + str(json))
+    emit('server_response', {'data': 'Server connected!'},broadcast=True)
+
+# Handle client event
+@socketio.on('client_event')
+def handle_client_event(json):
+    print('Received data: ' + str(json))
+    emit('server_response', {'data': 'Server received: ' + str(json['data'])},broadcast=True)
+
 
 if __name__ == "__main__":
-    app.run(debug=True,port=5000)
+    socketio.run(app,debug=True,port=5000)
