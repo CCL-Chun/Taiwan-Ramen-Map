@@ -1,3 +1,4 @@
+from pymongo import UpdateOne
 from dotenv import load_dotenv
 from Database import MongoDBConnection
 from Youbike_realtime_info import YoubikeTaipei
@@ -6,8 +7,8 @@ import json
 import os
 
 ## write to log
-# logging.basicConfig(level=logging.INFO,filename='log_update_youbike.txt',filemode='a',
-#     format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
+logging.basicConfig(level=logging.INFO,filename='log_update_youbike.txt',filemode='a',
+    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 
 ## connect to cloud MongoDB
 try:
@@ -19,24 +20,22 @@ except Exception as e:
 ## retrieve data from API
 data_to_update = YoubikeTaipei().parse_for_mongodb()
 
-## update
-if data_to_update:
-    for item in data_to_update:
-        sno = item["properties"]["sno"] # station id
-        new_statement = {
-            "properties.sbi": item["properties"]["sbi"],
-            "properties.mday": item["properties"]["mday"],
-            "properties.bemp": item["properties"]["bemp"],
-            "properties.srcUpdateTime": item["properties"]["srcUpdateTime"],
-            "properties.updateTime": item["properties"]["updateTime"],
-            "properties.infoTime": item["properties"]["infoTime"],
-            "properties.infoDate": item["properties"]["infoDate"],
-            "properties.act": item["properties"]["act"]
-        }
+## update using bulk write
+operations = []
+for item in data_to_update:
+    query = {"properties.sno": item["properties"]["sno"]}
+    update = {"$set": item}
+    operation = UpdateOne(query, update, upsert=True)
+    operations.append(operation)
 
-        collection.update_one(
-            {"properties.sno": sno},  # Query to find the document (using station ID inside properties)
-            {"$set": new_statement}
-        )
-else:
-    print("No data")
+try:
+    if operations:
+        result = collection.bulk_write(operations, ordered=False)
+        logging.info(f"Youbike data updated successfully: {result.bulk_api_result}")
+        # print(f"Youbike data updated successfully: {result.bulk_api_result}")
+    else:
+        logging.info("No Youbike data to update.")
+        # print("No Youbike data to update.")
+except Exception as e:
+    logging.error(f"Error during Youbike data bulk update: {e}")
+    print(e)
