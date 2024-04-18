@@ -40,8 +40,8 @@ except Exception as e:
     logging.error(f"Cannot connect to MongoDB!{e}")
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
+# app.config['SECRET_KEY'] = 'secret!'
+# socketio = SocketIO(app)
 
 
 @app.route("/")
@@ -86,18 +86,22 @@ def get_ramens():
 
 @app.route("/traffic/api/v1.0/parking", methods=["GET"])
 def get_parking():
-    lat = request.args.get('lat')
-    lng = request.args.get('lng')
+    lat = request.args.get('lat',type=float)
+    lng = request.args.get('lng',type=float)
     # find parking lot records
     parking_lots = list(collection_parking.find({
         "geometry":{
             "$geoWithin":{
                 "$centerSphere":[
                         [lng, lat],
-                        0.8 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
+                        0.5 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
                 ]
             }
-        }
+        },
+        "$or":[
+            {"properties.gatename": { "$exists": "true" }}, 
+            {"properties.pktype": { "$in": ["01","02","03","04","09","10","11","15","18","19","20","22","23"] }}
+        ]
     }))
     # initialize GeoJSON format
     parking_data = {"type":"FeatrureCollection"}
@@ -109,27 +113,25 @@ def get_parking():
     } for lot in parking_lots]
     print(len(parking_lots))
 
-    # print(parking_data[1:3])
-
     return jsonify(parking_data)
 
 # Handle the connection
-@socketio.on('connect')
-def handle_connect():
-    print('Client connected')
+# @socketio.on('connect')
+# def handle_connect():
+#     print('Client connected')
 
-# Handle custom connect event from client
-@socketio.on('connect_event')
-def handle_custom_connect_event(json):
-    print('Received connect_event: ' + str(json))
-    emit('server_response', {'data': 'Server connected!'},broadcast=True)
+# # Handle custom connect event from client
+# @socketio.on('connect_event')
+# def handle_custom_connect_event(json):
+#     print('Received connect_event: ' + str(json))
+#     emit('server_response', {'data': 'Server connected!'},broadcast=True)
 
-# Handle client event
-@socketio.on('client_event')
-def handle_client_event(json):
-    print('Received data: ' + str(json))
-    emit('server_response', {'data': 'Server received: ' + str(json['data'])},broadcast=True)
+# # Handle client event
+# @socketio.on('client_event')
+# def handle_client_event(json):
+#     print('Received data: ' + str(json))
+#     emit('server_response', {'data': 'Server received: ' + str(json['data'])},broadcast=True)
 
 
 if __name__ == "__main__":
-    socketio.run(app,debug=True,port=5000)
+    app.run(debug=True,port=5000)

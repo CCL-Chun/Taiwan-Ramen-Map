@@ -30,7 +30,7 @@ map.on('popupopen', function() {
             var lat = event.target.getAttribute('lat');
             // Now you can use lat and lng to request backend service
             console.log('Finding parking lots around:', lat, lng);
-
+            findParking(lat, lng);
 
         }
     });
@@ -54,7 +54,7 @@ function updateRamen(){
                                     '<br>' + feature.properties.address + '<br>' + 
                                     '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
                                         ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                        '">Find Parking</button>';
+                                        '>Find Parking</button>';
                         layer.bindPopup(popupContent);
                     }
                 }
@@ -62,14 +62,60 @@ function updateRamen(){
         });
 };
 
+// set an icon for parking lots
+var parkingIcon = L.icon({
+    iconUrl: 'static/car_parking_icon.svg',
+    iconSize: [30, 95],
+    iconAnchor: [22, 94],
+    popupAnchor: [-3, -76]
+});
 
-// function findParking(lat,lng){
-//     fetch(`/traffic/api/v1.0/parking?lat=${lat}&lng=${lng}`)
-//         .then(response => response.json())
-//         .then(parking_data => {
+// find the parking lots around
+function findParking(lat,lng){
+    const roadParkType = {
+        "01": "小型車",
+        "02": "機車",
+        "03": "身心障礙專用(汽車)",
+        "04": "身心障礙專用(機車)",
+        "09": "限時停車汽車",
+        "10": "時段性禁停汽車",
+        "11": "機慢車停放區",
+        "15": "汽車停車彎",
+        "18": "機慢車停放區(身心障礙專用)",
+        "19": "時段性禁停機車",
+        "20": "限時停車機車",
+        "22": "汽機車彈性共用",
+        "23": "大客車與小型車共用格位"
+    }
 
-//         });
-// }
+    fetch(`/traffic/api/v1.0/parking?lat=${lat}&lng=${lng}`)
+        .then(response => response.json())
+        .then(parking_data => {
+            var parkingLayer = L.geoJSON(parking_data, {
+                pointToLayer: function(feature, latlng) {
+                    return L.marker(latlng, {
+                        icon: parkingIcon
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties.gatename) {
+                        var popupContent = feature.properties.gatename +
+                        '<br>' + feature.properties.opentime +
+                        '<br>' + feature.properties.parknum +
+                        '<br>' + feature.properties.feeb +
+                        '<br>' + feature.properties.gadetype1
+                    } else{
+                        var popupContent = '路邊:' + roadParkType[feature.properties.pktype] +
+                        '<br>' + feature.properties.pknos
+                    }
+                    layer.bindPopup(popupContent);
+                }
+            },{
+                icon: parkingIcon
+            });
+            parkingLayer.addTo(map);
+        });
+}
 
 
 firstView()
