@@ -1,71 +1,112 @@
+let map;
+let routesLayer;
+let highlightedRouteLayer;
+
 // initialize the map
-var map = L.map('map').setView([25.052430, 121.520270], 16);
-
-L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', 
-    {
-        maxZoom : 24,
-        attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+$(document).ready(function() {
+    // default to 中山 if no geolocation
+    let defaultLat = 25.052430;
+    let defaultLng = 121.520270;
+    // steps to init the map
+    function init() {
+        initializeMap(defaultLat, defaultLng);
+        setupEventListeners();
+        firstView();
     }
-).addTo(map);
 
-L.marker([25.052430, 121.520270]).addTo(map)
-    .bindPopup('A pretty CSS3 popup.<br> Easily customizable.')
-    .openPopup();
+    // check if user's geolocation is available
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            defaultLat = position.coords.latitude;
+            defaultLng = position.coords.longitude;
+            init();
+        }, function(error) {
+            console.error("Error while fetching geolocation: ", error);
+            init(); // initialize map with default location 中山
+        });
+    } else {
+        console.error("Geolocation is not supported by this browser.");
+        init(); // initialize map with default location 中山
+    }
+});
+
+function initializeMap(lat = 25.052430, lng = 121.520270) { 
+    // default to 中山 if no geolocation
+    map = L.map('map').setView([lat, lng], 16);
+
+    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', 
+        {
+            maxZoom : 24,
+            attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }
+    ).addTo(map);
+
+    L.marker([lat, lng]).addTo(map)
+        .bindPopup('拉麵暴徒在此')
+        .openPopup();
+}
 
 // first view of the map
 function firstView(){
     updateRamen();
 }
 
-// search for parking lots around ramen
-map.on('popupopen', function() {
-    // use the map container to handle click event
-    var popupContainer = map.getPane('popupPane');
-
-    popupContainer.addEventListener('click', function(event) {
-        // #find-parking only
-        if (event.target.classList.contains('find-parking')) {
-            // retrieve the coordinates from attributes
-            var lng = event.target.getAttribute('lng');
-            var lat = event.target.getAttribute('lat');
-            // Now you can use lat and lng to request backend service
-            console.log('Finding parking lots around:', lat, lng);
-            findParking(lat, lng);
-
-        }
+function setupEventListeners() {
+    $('#navigation-button').on('click', function() {
+        fetchAndDisplayRoutes();
     });
-});
+
+    // search for parking lots around ramen
+    map.on('popupopen', function() {
+        // use the map container to handle click event
+        var popupContainer = map.getPane('popupPane');
+
+        popupContainer.addEventListener('click', function(event) {
+            // #find-parking only
+            if (event.target.classList.contains('find-parking')) {
+                // retrieve the coordinates from attributes
+                var lng = event.target.getAttribute('lng');
+                var lat = event.target.getAttribute('lat');
+                console.log('Finding parking lots around:', lat, lng);
+                // fetch from flask api and show on map layer
+                findParking(lat, lng);
+            }
+        });
+    });
+}
 
 // get bounds based on the view
 function updateRamen(){
-    // Get the current map bounds as a string of comma-separated values
-    var center = map.getCenter();
-    var centerGeo = [center.lng, center.lat];
+    if (map) {
+        // get the current map center LatLng for api parameters
+        var center = map.getCenter();
+        var centerGeo = [center.lng, center.lat];
 
-    fetch(`/ramen/api/v1.0/restaurants?center=${centerGeo}`)
-        .then(response => response.json())
-        .then(ramen_geojson => {
-            L.geoJSON(ramen_geojson, {
-                onEachFeature: function (feature, layer) {
-                    if (feature.properties) {
-                        var popupContent = feature.properties.name +
-                                    '<br>' + feature.properties.weekday + feature.properties.open +
-                                    '<br>評分: ' + feature.properties.overall + ' / 5'+
-                                    '<br>' + feature.properties.address + '<br>' + 
-                                    '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
-                                        ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                        '>Find Parking</button>';
-                        layer.bindPopup(popupContent);
+        fetch(`/ramen/api/v1.0/restaurants?center=${centerGeo}`)
+            .then(response => response.json())
+            .then(ramen_geojson => {
+                L.geoJSON(ramen_geojson, {
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            var popupContent = feature.properties.name +
+                                        '<br>' + feature.properties.weekday + feature.properties.open +
+                                        '<br>評分: ' + feature.properties.overall + ' / 5'+
+                                        '<br>' + feature.properties.address + '<br>' + 
+                                        '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
+                                            ' ' + 'lat=' + feature.geometry.coordinates[1] +
+                                            '>Find Parking</button>';
+                            layer.bindPopup(popupContent);
+                        }
                     }
-                }
-            }).addTo(map);
-        });
+                }).addTo(map);
+            });
+    };
 };
 
 // set an icon for parking lots
 var parkingIcon = L.icon({
     iconUrl: 'static/car_parking_icon.svg',
-    iconSize: [30, 95],
+    iconSize: [20, 75],
     iconAnchor: [22, 94],
     popupAnchor: [-3, -76]
 });
@@ -117,5 +158,67 @@ function findParking(lat,lng){
         });
 }
 
+function fetchAndDisplayRoutes() {
+    // initialize layers
+    if (!routesLayer) {
+        routesLayer = L.layerGroup().addTo(map);
+    } else {
+        routesLayer.clearLayers(); // clear existing routes if already initialized
+    }
 
-firstView()
+    if (!highlightedRouteLayer) {
+        highlightedRouteLayer = L.layerGroup().addTo(map);
+    } else {
+        highlightedRouteLayer.clearLayers(); // clear existing highlights if already initialized
+    }
+
+    // fetch the planned route 
+    fetch('/traffic/api/v1.0/routes')
+        .then(response => response.json())
+        .then(data => {
+            addAllRoutesToMap(data); // add polyline to the map without highlighting
+            displaySegmentedNavigationInstructions(data); // display segmented instructions
+        })
+        .catch(error => console.error('Error fetching routes:', error));
+}
+
+function addAllRoutesToMap(routeData) {
+    // add each sub-routes on routesLayer
+    routeData.routes[0].legs[0].steps.forEach(step => {
+        var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
+        L.polyline(lineCoordinates, { color: 'blue' }).addTo(routesLayer);
+    });
+}
+
+function displaySegmentedNavigationInstructions(routeData) {
+    var instructionsContainer = $('#instructions-container');
+    var steps = routeData.routes[0].legs[0].steps;
+    var segments = routeData.routes[0].legs[0].stepsOverview.multiModalSegments;
+
+    segments.forEach((segment, index) => {
+        var segmentInstructions = segment.navigationInstruction.instructions;
+        var instruction = $('<div class="instruction" data-segment-index="' + index + '">' + segmentInstructions + '</div>');
+        instructionsContainer.append(instruction);
+
+        instruction.on('click', function() {
+            var segmentIndex = $(this).data('segment-index');
+            highlightSegment(segmentIndex, segments, steps);
+        });
+    });
+}
+
+function highlightSegment(segmentIndex, segments, steps) {
+    highlightedRouteLayer.clearLayers();
+    var startIndex = segments[segmentIndex].stepStartIndex;
+    var endIndex = segments[segmentIndex].stepEndIndex;
+
+    var segmentCoordinates = [];
+    for (var i = startIndex; i <= endIndex; i++) {
+        var stepCoordinates = steps[i].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
+        segmentCoordinates = segmentCoordinates.concat(stepCoordinates);
+    }
+
+    var polyline = L.polyline(segmentCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
+    map.fitBounds(polyline.getBounds(),{maxZoom:20});
+}
+

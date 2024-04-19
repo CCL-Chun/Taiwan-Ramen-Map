@@ -7,7 +7,7 @@
         crossorigin=""/>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-        <script type="text/javascript" charset="utf-8">
+        <!-- <script type="text/javascript" charset="utf-8">
             $(document).ready(function() {
                 var socket = io.connect('http://127.0.0.1:5000');
     
@@ -29,16 +29,18 @@
                     $('#emit_data').val('');
                 });
             });
-        </script>
+        </script> -->
 </head>
 <body>
     <div id="map" style="height: 800px;"></div>
-    <h4>Socket.io API (test)</h4>
+    <div id="instructions-container"></div>
+    <button id="navigation-button">導航</button>
+    <!-- <h4>Socket.io API (test)</h4>
     <form id="emit" action='#'>
         <textarea name="emit_data" id="emit_data" placeholder="Enter your message here..." cols="50" rows="5"></textarea>
         <input type="submit" value="Run">
     </form>
-    <div id='log'></div>
+    <div id='log'></div> -->
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="

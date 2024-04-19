@@ -115,6 +115,13 @@ def get_parking():
 
     return jsonify(parking_data)
 
+@app.route("/traffic/api/v1.0/routes")
+def route_plan():
+    with open("route_3.json","r") as f:
+        data = json.loads(f.read())
+        return jsonify(data)
+        
+
 # Handle the connection
 # @socketio.on('connect')
 # def handle_connect():
