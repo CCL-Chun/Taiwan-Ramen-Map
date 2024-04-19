@@ -1,6 +1,9 @@
 let map;
-let routesLayer;
-let highlightedRouteLayer;
+let ramenLayer = L.layerGroup();
+let parkingLayer = L.layerGroup();
+let routesLayer = L.layerGroup();
+let highlightedRouteLayer = L.layerGroup();
+let layerControl;
 
 // initialize the map
 $(document).ready(function() {
@@ -30,20 +33,38 @@ $(document).ready(function() {
     }
 });
 
-function initializeMap(lat = 25.052430, lng = 121.520270) { 
-    // default to 中山 if no geolocation
-    map = L.map('map').setView([lat, lng], 16);
+function initializeMap(lat = 25.052430, lng = 121.520270) {
 
-    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', 
-        {
+    let osmBike = L.tileLayer(
+        'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
             maxZoom : 24,
             attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }
-    ).addTo(map);
+    );
 
-    L.marker([lat, lng]).addTo(map)
-        .bindPopup('拉麵暴徒在此')
-        .openPopup();
+    let startPoint = L.layerGroup([L.marker([lat, lng])
+                                    .bindPopup('拉麵暴徒在此')
+                                    .openPopup()]);
+
+    // default to 中山 if no geolocation
+    map = L.map('map',{
+        center: [lat, lng],
+        zoom: 16,
+        layers: [osmBike,startPoint]
+    });
+
+    var baseMaps = {
+        "基本單車道地圖": osmBike
+    };
+    
+    var overlayMaps = {
+        "拉麵店": ramenLayer,
+        "停車格": parkingLayer,
+        "規劃路線(完整)": routesLayer,
+        "規劃路線(部分重點)": highlightedRouteLayer
+    };
+
+    L.control.layers(baseMaps, overlayMaps).addTo(map);
 }
 
 // first view of the map
@@ -78,6 +99,11 @@ function setupEventListeners() {
 // get bounds based on the view
 function updateRamen(){
     if (map) {
+        if (!ramenLayer) {
+            ramenLayer = L.layerGroup().addTo(map);
+        } else {
+            ramenLayer.clearLayers(); // clear existing ramen if already initialized
+        }
         // get the current map center LatLng for api parameters
         var center = map.getCenter();
         var centerGeo = [center.lng, center.lat];
@@ -98,7 +124,7 @@ function updateRamen(){
                             layer.bindPopup(popupContent);
                         }
                     }
-                }).addTo(map);
+                }).addTo(ramenLayer);
             });
     };
 };
@@ -132,7 +158,7 @@ function findParking(lat,lng){
     fetch(`/traffic/api/v1.0/parking?lat=${lat}&lng=${lng}`)
         .then(response => response.json())
         .then(parking_data => {
-            var parkingLayer = L.geoJSON(parking_data, {
+            L.geoJSON(parking_data, {
                 pointToLayer: function(feature, latlng) {
                     return L.marker(latlng, {
                         icon: parkingIcon
@@ -153,8 +179,7 @@ function findParking(lat,lng){
                 }
             },{
                 icon: parkingIcon
-            });
-            parkingLayer.addTo(map);
+            }).addTo(parkingLayer);
         });
 }
 
