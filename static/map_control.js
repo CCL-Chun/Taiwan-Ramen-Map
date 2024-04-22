@@ -4,6 +4,31 @@ let parkingLayer = L.layerGroup();
 let routesLayer = L.layerGroup();
 let highlightedRouteLayer = L.layerGroup();
 let layerControl;
+let lastMoveLatLng;
+
+let HomeControl = L.Control.extend({
+    options: {
+        position: 'topleft'
+    },
+
+    onAdd: function (map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+
+        // Create a button element
+        var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
+        button.title = 'Go to Home';
+
+        // Add class for the icon
+        L.DomUtil.addClass(button, 'home-icon');
+
+        // Add a click event listener to the button
+        L.DomEvent.on(button, 'click', function (e) {
+            map.setView(this.options.homeCoordinates, this.options.homeZoom);
+        }, this);
+
+        return container;
+    }
+});
 
 // initialize the map
 $(document).ready(function() {
@@ -65,6 +90,12 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+    var homeCoordinates = [lat, lng];
+    var homeZoom = 16;
+    
+    // create a home button
+    map.addControl(new HomeControl({ homeCoordinates: homeCoordinates, homeZoom: homeZoom }));
 }
 
 // first view of the map
@@ -93,6 +124,23 @@ function setupEventListeners() {
                 findParking(lat, lng);
             }
         });
+    });
+
+    // show the update button
+    map.on('moveend', function(e) {
+        var newLatLng = map.getCenter();
+        if (lastMoveLatLng) {
+            var distance = lastMoveLatLng.distanceTo(newLatLng);
+            // Convert distance to kilometers
+            var distanceInKm = distance / 1000;
+            if (distanceInKm > 1) {
+                displayUpdateRamenButton();
+            }
+        }
+        else{
+            lastMoveLatLng = map.getCenter();
+        };
+        lastMoveLatLng = newLatLng;
     });
 }
 
@@ -128,6 +176,31 @@ function updateRamen(){
             });
     };
 };
+
+// button for update ramen
+function displayUpdateRamenButton() {
+    // Create a button element
+    var button = L.DomUtil.create('button', 'leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
+    button.innerHTML = 'Update Ramen';
+    button.title = 'Update Ramen';
+    
+    // Set CSS style for button positioning
+    button.style.position = 'absolute';
+    button.style.top = '10px';
+    button.style.left = '50%';
+    button.style.zIndex = 1000;
+
+    // Add the button to the map
+    map.getContainer().appendChild(button);
+    
+    // Add a click event listener to the button
+    L.DomEvent.on(button, 'click', function (e) {
+        // Call the updateRamen function
+        updateRamen();
+        // Remove the button from the map
+        map.getContainer().removeChild(button);
+    });
+}
 
 // set an icon for parking lots
 var parkingIcon = L.icon({

@@ -5,31 +5,32 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin=""/>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-        <!-- <script type="text/javascript" charset="utf-8">
-            $(document).ready(function() {
-                var socket = io.connect('http://127.0.0.1:5000');
-    
-                socket.on('connect', function() {
-                    console.log('Connected to the server.');
-                    socket.emit('connect_event', {data: 'I\'m connected!'});
-                });
-    
-                socket.on('server_response', function(msg) {
-                    console.log('Received a message: ', msg.data);
-                    $('#log').append('<br>' + $('<div/>').text('Received: ' + msg.data).html());
-                });
-    
-                $('form#emit').submit(function(event) {
-                    event.preventDefault();
-                    var messageToSend = $('#emit_data').val();
-                    console.log('Sending message: ', messageToSend);
-                    socket.emit('client_event', {data: messageToSend});
-                    $('#emit_data').val('');
-                });
+    <link rel="stylesheet" href="static/map.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <!-- <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+            var socket = io.connect('http://127.0.0.1:5000');
+
+            socket.on('connect', function() {
+                console.log('Connected to the server.');
+                socket.emit('connect_event', {data: 'I\'m connected!'});
             });
-        </script> -->
+
+            socket.on('server_response', function(msg) {
+                console.log('Received a message: ', msg.data);
+                $('#log').append('<br>' + $('<div/>').text('Received: ' + msg.data).html());
+            });
+
+            $('form#emit').submit(function(event) {
+                event.preventDefault();
+                var messageToSend = $('#emit_data').val();
+                console.log('Sending message: ', messageToSend);
+                socket.emit('client_event', {data: messageToSend});
+                $('#emit_data').val('');
+            });
+        });
+    </script> -->
 </head>
 <body>
     <div id="map" style="height: 800px;"></div>
