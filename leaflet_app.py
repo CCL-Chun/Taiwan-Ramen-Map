@@ -14,6 +14,7 @@ import os
 logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
     format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 
+load_dotenv()
 timezone = pytz.timezone('Asia/Taipei')
 weekDaysMapping = ("星期一", "星期二",
                    "星期三", "星期四",
@@ -26,7 +27,6 @@ def weekday():
 
 ## connect to cloud MongoDB
 try:
-    load_dotenv()
     username = os.getenv("MongoDB_user")
     password = os.getenv("MongoDB_password")
     cluster_url = os.getenv("MongoDB_cluster_url")
@@ -115,11 +115,59 @@ def get_parking():
 
     return jsonify(parking_data)
 
-@app.route("/traffic/api/v1.0/routes")
+@app.route("/traffic/api/v1.0/routes", methods=['GET'])
 def route_plan():
-    with open("route_3.json","r") as f:
-        data = json.loads(f.read())
-        return jsonify(data)
+    start_lat = request.args.get('start_lat')
+    start_lng = request.args.get('start_lng')
+    end_lat = request.args.get('end_lat')
+    end_lng = request.args.get('end_lng')
+    try:
+        googlemap_api_key = os.getenv("googlemaps_API_Key")
+    except Exception as e:
+        logging.error(f"Cannot get API KEY from env!{e}")
+
+    url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': googlemap_api_key,
+        'X-Goog-FieldMask': (
+            'routes.polyline,'
+            'routes.routeLabels,'
+            'routes.duration,'
+            'routes.distanceMeters,'
+            'routes.localizedValues,'
+            'routes.legs.distanceMeters,'
+            'routes.legs.stepsOverview,'
+            'routes.legs.steps.staticDuration,'
+            'routes.legs.steps.transitDetails,'
+            'routes.legs.steps.navigationInstruction,'
+            'routes.legs.steps.localizedValues,'
+            'routes.legs.steps.travelMode,'
+            'routes.legs.steps.polyline') # option 1
+    }
+    payload = {
+        "origin": {
+            "location": {"latLng": {"latitude":start_lat,"longitude":start_lng}} # option 2
+        },
+        "destination": {
+            "location": {"latLng": {"latitude":end_lat,"longitude":end_lng}} # option 3
+        },
+        "travelMode": "TRANSIT", # option 4
+        "computeAlternativeRoutes": "true",
+        "polylineEncoding": "GEO_JSON_LINESTRING", # specifying GeoJSON line string
+        "transitPreferences": {
+            "routingPreference": "LESS_WALKING", # option 5
+            "allowedTravelModes": ["BUS","RAIL"] # option 6
+        },
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        result = response.json()
+        print(result)
+        return result
+    except Exception as e:
+        print(e)
+        return e, 500    
         
 
 # Handle the connection

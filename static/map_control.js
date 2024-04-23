@@ -4,6 +4,8 @@ let parkingLayer = L.layerGroup();
 let routesLayer = L.layerGroup();
 let highlightedRouteLayer = L.layerGroup();
 let layerControl;
+let defaultLat;
+let defaultLng;
 let lastMoveLatLng;
 
 let HomeControl = L.Control.extend({
@@ -33,8 +35,8 @@ let HomeControl = L.Control.extend({
 // initialize the map
 $(document).ready(function() {
     // default to 中山 if no geolocation
-    let defaultLat = 25.052430;
-    let defaultLng = 121.520270;
+    defaultLat = 25.052430;
+    defaultLng = 121.520270;
     // steps to init the map
     function init() {
         initializeMap(defaultLat, defaultLng);
@@ -104,8 +106,8 @@ function firstView(){
 }
 
 function setupEventListeners() {
-    $('#navigation-button').on('click', function() {
-        fetchAndDisplayRoutes();
+    $('#bring-me-here').on('click', function() {
+        fetchAndDisplayRoutes(lat,lng);
     });
 
     // search for parking lots around ramen
@@ -123,11 +125,21 @@ function setupEventListeners() {
                 // fetch from flask api and show on map layer
                 findParking(lat, lng);
             }
+
+            // #bring-me-here only
+            if (event.target.classList.contains('bring-me-here')) {
+                // retrieve the coordinates from attributes
+                var endLng = event.target.getAttribute('lng');
+                var endLat = event.target.getAttribute('lat');
+                console.log('Planning the routes to:', endLat, endLng);
+                // fetch from flask api and show on map layer
+                fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng);
+            }
         });
     });
 
     // show the update button
-    map.on('moveend', function(e) {
+    map.on('moveend', function() {
         var newLatLng = map.getCenter();
         if (lastMoveLatLng) {
             var distance = lastMoveLatLng.distanceTo(newLatLng);
@@ -168,7 +180,10 @@ function updateRamen(){
                                         '<br>' + feature.properties.address + '<br>' + 
                                         '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                            '>Find Parking</button>';
+                                            '>附近停車位</button>' + '<br>' +
+                                        '<button class="bring-me-here" lng=' + feature.geometry.coordinates[0] + 
+                                            ' ' + 'lat=' + feature.geometry.coordinates[1] +
+                                            '>拉麵突進導航</button>';
                             layer.bindPopup(popupContent);
                         }
                     }
@@ -194,7 +209,7 @@ function displayUpdateRamenButton() {
     map.getContainer().appendChild(button);
     
     // Add a click event listener to the button
-    L.DomEvent.on(button, 'click', function (e) {
+    L.DomEvent.on(button, 'click', function () {
         // Call the updateRamen function
         updateRamen();
         // Remove the button from the map
@@ -256,7 +271,7 @@ function findParking(lat,lng){
         });
 }
 
-function fetchAndDisplayRoutes() {
+function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     // initialize layers
     if (!routesLayer) {
         routesLayer = L.layerGroup().addTo(map);
@@ -271,7 +286,7 @@ function fetchAndDisplayRoutes() {
     }
 
     // fetch the planned route 
-    fetch('/traffic/api/v1.0/routes')
+    fetch(`/traffic/api/v1.0/routes?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
             addAllRoutesToMap(data); // add polyline to the map without highlighting
@@ -290,6 +305,8 @@ function addAllRoutesToMap(routeData) {
 
 function displaySegmentedNavigationInstructions(routeData) {
     var instructionsContainer = $('#instructions-container');
+    instructionsContainer.empty(); // clean up before adding new routes Navigation Instructions
+    
     var steps = routeData.routes[0].legs[0].steps;
     var segments = routeData.routes[0].legs[0].stepsOverview.multiModalSegments;
 

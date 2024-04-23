@@ -1,0 +1,6 @@
+/* Define icon appearance */
+.leaflet-control-home.home-icon {
+    background-image: url('current_location.png');
+    background-size: contain; /* Adjust as needed */
+    /* Other styling properties */
+}
