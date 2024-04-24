@@ -299,41 +299,36 @@ function addAllRoutesToMap(routeData) {
     // add each sub-routes on routesLayer
     routeData.routes[0].legs[0].steps.forEach(step => {
         var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        L.polyline(lineCoordinates, { color: 'blue' }).addTo(routesLayer);
+        L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5,
+                                      dashArray: '4 1'
+                                    }).addTo(routesLayer);
     });
 }
 
 function displaySegmentedNavigationInstructions(routeData) {
     var instructionsContainer = $('#instructions-container');
     instructionsContainer.empty(); // clean up before adding new routes Navigation Instructions
-    
-    var steps = routeData.routes[0].legs[0].steps;
-    var segments = routeData.routes[0].legs[0].stepsOverview.multiModalSegments;
 
-    segments.forEach((segment, index) => {
-        var segmentInstructions = segment.navigationInstruction.instructions;
-        var instruction = $('<div class="instruction" data-segment-index="' + index + '">' + segmentInstructions + '</div>');
+    var steps = routeData.routes[0].legs[0].steps;
+
+    steps.forEach((step, index) => {
+        var instructionText = step.navigationInstruction.instructions;
+        var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
         instructionsContainer.append(instruction);
 
         instruction.on('click', function() {
-            var segmentIndex = $(this).data('segment-index');
-            highlightSegment(segmentIndex, segments, steps);
+            var stepIndex = $(this).data('step-index');
+            highlightStep(stepIndex, steps);
         });
     });
 }
 
-function highlightSegment(segmentIndex, segments, steps) {
-    highlightedRouteLayer.clearLayers();
-    var startIndex = segments[segmentIndex].stepStartIndex;
-    var endIndex = segments[segmentIndex].stepEndIndex;
 
-    var segmentCoordinates = [];
-    for (var i = startIndex; i <= endIndex; i++) {
-        var stepCoordinates = steps[i].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        segmentCoordinates = segmentCoordinates.concat(stepCoordinates);
-    }
+function highlightStep(stepIndex, steps) {
+    highlightedRouteLayer.clearLayers();  // Clear previous highlights
 
-    var polyline = L.polyline(segmentCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
-    map.fitBounds(polyline.getBounds(),{maxZoom:20});
+    var stepCoordinates = steps[stepIndex].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
+    var polyline = L.polyline(stepCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
+
+    map.fitBounds(polyline.getBounds(), {maxZoom: 18});
 }
-
