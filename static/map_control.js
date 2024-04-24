@@ -69,15 +69,14 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
         }
     );
 
-    let startPoint = L.layerGroup([L.marker([lat, lng])
-                                    .bindPopup('拉麵暴徒在此')
-                                    .openPopup()]);
+    let startMarker = L.marker([lat, lng]).bindPopup('拉麵暴徒在此')
+    startPoint = L.layerGroup([startMarker]);
 
     // default to 中山 if no geolocation
     map = L.map('map',{
         center: [lat, lng],
         zoom: 16,
-        layers: [osmBike,startPoint]
+        layers: [osmBike,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer]
     });
 
     var baseMaps = {
@@ -92,6 +91,7 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
+    startMarker.openPopup();
 
     var homeCoordinates = [lat, lng];
     var homeZoom = 16;
@@ -299,9 +299,7 @@ function addAllRoutesToMap(routeData) {
     // add each sub-routes on routesLayer
     routeData.routes[0].legs[0].steps.forEach(step => {
         var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5,
-                                      dashArray: '4 1'
-                                    }).addTo(routesLayer);
+        L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5,}).addTo(routesLayer);
     });
 }
 
