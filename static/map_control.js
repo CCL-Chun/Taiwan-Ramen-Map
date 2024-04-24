@@ -4,12 +4,39 @@ let parkingLayer = L.layerGroup();
 let routesLayer = L.layerGroup();
 let highlightedRouteLayer = L.layerGroup();
 let layerControl;
+let defaultLat;
+let defaultLng;
+let lastMoveLatLng;
+
+let HomeControl = L.Control.extend({
+    options: {
+        position: 'topleft'
+    },
+
+    onAdd: function (map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+
+        // Create a button element
+        var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
+        button.title = 'Go to Home';
+
+        // Add class for the icon
+        L.DomUtil.addClass(button, 'home-icon');
+
+        // Add a click event listener to the button
+        L.DomEvent.on(button, 'click', function (e) {
+            map.setView(this.options.homeCoordinates, this.options.homeZoom);
+        }, this);
+
+        return container;
+    }
+});
 
 // initialize the map
 $(document).ready(function() {
     // default to 中山 if no geolocation
-    let defaultLat = 25.052430;
-    let defaultLng = 121.520270;
+    defaultLat = 25.052430;
+    defaultLng = 121.520270;
     // steps to init the map
     function init() {
         initializeMap(defaultLat, defaultLng);
@@ -42,15 +69,14 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
         }
     );
 
-    let startPoint = L.layerGroup([L.marker([lat, lng])
-                                    .bindPopup('拉麵暴徒在此')
-                                    .openPopup()]);
+    let startMarker = L.marker([lat, lng]).bindPopup('拉麵暴徒在此')
+    startPoint = L.layerGroup([startMarker]);
 
     // default to 中山 if no geolocation
     map = L.map('map',{
         center: [lat, lng],
         zoom: 16,
-        layers: [osmBike,startPoint]
+        layers: [osmBike,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer]
     });
 
     var baseMaps = {
@@ -65,6 +91,13 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
+    startMarker.openPopup();
+
+    var homeCoordinates = [lat, lng];
+    var homeZoom = 16;
+    
+    // create a home button
+    map.addControl(new HomeControl({ homeCoordinates: homeCoordinates, homeZoom: homeZoom }));
 }
 
 // first view of the map
@@ -73,8 +106,8 @@ function firstView(){
 }
 
 function setupEventListeners() {
-    $('#navigation-button').on('click', function() {
-        fetchAndDisplayRoutes();
+    $('#bring-me-here').on('click', function() {
+        fetchAndDisplayRoutes(lat,lng);
     });
 
     // search for parking lots around ramen
@@ -92,7 +125,34 @@ function setupEventListeners() {
                 // fetch from flask api and show on map layer
                 findParking(lat, lng);
             }
+
+            // #bring-me-here only
+            if (event.target.classList.contains('bring-me-here')) {
+                // retrieve the coordinates from attributes
+                var endLng = event.target.getAttribute('lng');
+                var endLat = event.target.getAttribute('lat');
+                console.log('Planning the routes to:', endLat, endLng);
+                // fetch from flask api and show on map layer
+                fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng);
+            }
         });
+    });
+
+    // show the update button
+    map.on('moveend', function() {
+        var newLatLng = map.getCenter();
+        if (lastMoveLatLng) {
+            var distance = lastMoveLatLng.distanceTo(newLatLng);
+            // Convert distance to kilometers
+            var distanceInKm = distance / 1000;
+            if (distanceInKm > 1) {
+                displayUpdateRamenButton();
+            }
+        }
+        else{
+            lastMoveLatLng = map.getCenter();
+        };
+        lastMoveLatLng = newLatLng;
     });
 }
 
@@ -120,7 +180,10 @@ function updateRamen(){
                                         '<br>' + feature.properties.address + '<br>' + 
                                         '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                            '>Find Parking</button>';
+                                            '>附近停車位</button>' + '<br>' +
+                                        '<button class="bring-me-here" lng=' + feature.geometry.coordinates[0] + 
+                                            ' ' + 'lat=' + feature.geometry.coordinates[1] +
+                                            '>拉麵突進導航</button>';
                             layer.bindPopup(popupContent);
                         }
                     }
@@ -128,6 +191,31 @@ function updateRamen(){
             });
     };
 };
+
+// button for update ramen
+function displayUpdateRamenButton() {
+    // Create a button element
+    var button = L.DomUtil.create('button', 'leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
+    button.innerHTML = 'Update Ramen';
+    button.title = 'Update Ramen';
+    
+    // Set CSS style for button positioning
+    button.style.position = 'absolute';
+    button.style.top = '10px';
+    button.style.left = '50%';
+    button.style.zIndex = 1000;
+
+    // Add the button to the map
+    map.getContainer().appendChild(button);
+    
+    // Add a click event listener to the button
+    L.DomEvent.on(button, 'click', function () {
+        // Call the updateRamen function
+        updateRamen();
+        // Remove the button from the map
+        map.getContainer().removeChild(button);
+    });
+}
 
 // set an icon for parking lots
 var parkingIcon = L.icon({
@@ -183,7 +271,7 @@ function findParking(lat,lng){
         });
 }
 
-function fetchAndDisplayRoutes() {
+function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     // initialize layers
     if (!routesLayer) {
         routesLayer = L.layerGroup().addTo(map);
@@ -198,7 +286,7 @@ function fetchAndDisplayRoutes() {
     }
 
     // fetch the planned route 
-    fetch('/traffic/api/v1.0/routes')
+    fetch(`/traffic/api/v1.0/routes?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
             addAllRoutesToMap(data); // add polyline to the map without highlighting
@@ -211,39 +299,34 @@ function addAllRoutesToMap(routeData) {
     // add each sub-routes on routesLayer
     routeData.routes[0].legs[0].steps.forEach(step => {
         var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        L.polyline(lineCoordinates, { color: 'blue' }).addTo(routesLayer);
+        L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5,}).addTo(routesLayer);
     });
 }
 
 function displaySegmentedNavigationInstructions(routeData) {
     var instructionsContainer = $('#instructions-container');
-    var steps = routeData.routes[0].legs[0].steps;
-    var segments = routeData.routes[0].legs[0].stepsOverview.multiModalSegments;
+    instructionsContainer.empty(); // clean up before adding new routes Navigation Instructions
 
-    segments.forEach((segment, index) => {
-        var segmentInstructions = segment.navigationInstruction.instructions;
-        var instruction = $('<div class="instruction" data-segment-index="' + index + '">' + segmentInstructions + '</div>');
+    var steps = routeData.routes[0].legs[0].steps;
+
+    steps.forEach((step, index) => {
+        var instructionText = step.navigationInstruction.instructions;
+        var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
         instructionsContainer.append(instruction);
 
         instruction.on('click', function() {
-            var segmentIndex = $(this).data('segment-index');
-            highlightSegment(segmentIndex, segments, steps);
+            var stepIndex = $(this).data('step-index');
+            highlightStep(stepIndex, steps);
         });
     });
 }
 
-function highlightSegment(segmentIndex, segments, steps) {
-    highlightedRouteLayer.clearLayers();
-    var startIndex = segments[segmentIndex].stepStartIndex;
-    var endIndex = segments[segmentIndex].stepEndIndex;
 
-    var segmentCoordinates = [];
-    for (var i = startIndex; i <= endIndex; i++) {
-        var stepCoordinates = steps[i].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        segmentCoordinates = segmentCoordinates.concat(stepCoordinates);
-    }
+function highlightStep(stepIndex, steps) {
+    highlightedRouteLayer.clearLayers();  // Clear previous highlights
 
-    var polyline = L.polyline(segmentCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
-    map.fitBounds(polyline.getBounds(),{maxZoom:20});
+    var stepCoordinates = steps[stepIndex].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
+    var polyline = L.polyline(stepCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
+
+    map.fitBounds(polyline.getBounds(), {maxZoom: 18});
 }
-
