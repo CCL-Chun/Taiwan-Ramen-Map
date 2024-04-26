@@ -8,6 +8,7 @@ let layerControl;
 let defaultLat;
 let defaultLng;
 let lastMoveLatLng;
+let socket;
 
 let HomeControl = L.Control.extend({
     options: {
@@ -122,7 +123,7 @@ function setupEventListeners() {
         })
         .catch(error => console.error('Error fetching routes:', error));
     });
-    
+
     // search for parking lots around ramen
     map.on('popupopen', function() {
         // use the map container to handle click event
@@ -336,7 +337,7 @@ function displaySegmentedNavigationInstructions(routeData) {
     mainInstructionsContainer.empty();
     youbikeInstructionsContainer.empty();
 
-    // Display instructions for the main route
+    // display instructions for the main route
     var fastestIndex = routeData.prompt[0].fastest_index;
     var mainSteps = routeData.routes[fastestIndex].legs[0].steps;
     mainSteps.forEach((step, index) => {
@@ -350,7 +351,7 @@ function displaySegmentedNavigationInstructions(routeData) {
         });
     });
 
-    // If there's a YouBike route, display instructions for it
+    // display YouBike route instructions
     if (routeData.prompt[0].youbike_improve === 1) {
         console.log("YouBike route get!")
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
@@ -368,8 +369,6 @@ function displaySegmentedNavigationInstructions(routeData) {
     }
 }
 
-
-
 function highlightStep(stepIndex, steps) {
     highlightedRouteLayer.clearLayers();  // Clear previous highlights
 
@@ -378,3 +377,68 @@ function highlightStep(stepIndex, steps) {
 
     map.fitBounds(polyline.getBounds(), {maxZoom: 18});
 }
+
+// Event listener for opening the offcanvas
+document.addEventListener('DOMContentLoaded', function() {
+    var detailsButton = document.getElementById('details');
+    var offcanvasElement = document.getElementById('offcanvasScrolling');
+
+    detailsButton.addEventListener('click', function() {
+        var currentId = this.getAttribute('data-id');  // get the data-id attribute from the button
+
+        offcanvasElement.setAttribute('data-current-id', currentId); // set the data-current-id attribute on the offcanvas before showing it
+        
+        var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
+        bsOffcanvas.show(); // show the offcanvas
+
+        // retrieve the ID set after opened
+        var currentId = offcanvasElement.getAttribute('data-current-id');
+
+        // initialize or use existing Socket.IO connection
+        if (!window.socket) {
+            window.socket = io('http://127.0.0.1:5000');
+
+            window.socket.on('connect', function() {
+                console.log('Socket.IO connected for ID:', currentId);
+            });
+
+            window.socket.on('server_response', function(data) {
+                var logElement = document.getElementById('log');
+                var div = document.createElement('div');
+                div.textContent = 'Received: ' + data.message;
+                logElement.appendChild(div);
+            });
+
+            // use the ID to emit a message or join a specific room
+            window.socket.emit('join_room', { id: currentId });
+        }
+    });
+
+    offcanvasElement.addEventListener('hidden.bs.offcanvas', function(event) {
+        var currentId = this.getAttribute('data-current-id');
+
+        if (window.socket) {
+            window.socket.emit('leave_room', { id: currentId });
+            window.socket.disconnect();
+            window.socket = null;
+            console.log('Socket.IO disconnected for ID:', currentId);
+        }
+    });
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    var formElement = document.getElementById('emit');
+    var inputElement = document.getElementById('emit_data');
+
+    formElement.addEventListener('submit', function(event) {
+        event.preventDefault();
+        if (window.socket && window.socket.connected) {
+            var messageToSend = inputElement.value;
+            window.socket.emit('client_event', { "data": messageToSend });
+            inputElement.value = '';  // clear the input after sending
+        } else {
+            console.error("Socket.IO connection not established.");
+        }
+    });
+});
