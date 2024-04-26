@@ -3,6 +3,7 @@ let ramenLayer = L.layerGroup();
 let parkingLayer = L.layerGroup();
 let routesLayer = L.layerGroup();
 let highlightedRouteLayer = L.layerGroup();
+let bikeRoutesLayer = L.layerGroup();
 let layerControl;
 let defaultLat;
 let defaultLng;
@@ -87,7 +88,8 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
         "拉麵店": ramenLayer,
         "停車格": parkingLayer,
         "規劃路線(完整)": routesLayer,
-        "規劃路線(部分重點)": highlightedRouteLayer
+        "規劃路線(部分重點)": highlightedRouteLayer,
+        "優化路線(結合YouBike)": bikeRoutesLayer
     };
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
@@ -98,6 +100,10 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     
     // create a home button
     map.addControl(new HomeControl({ homeCoordinates: homeCoordinates, homeZoom: homeZoom }));
+
+    var pointA = [25.0384799,121.5323702];
+    var pointB = [25.0471126,121.541689];
+    L.polyline([pointA,pointB], { color: '#08F7F7', weight: 5, dashArray: '20 20'}).addTo(routesLayer);
 }
 
 // first view of the map
@@ -106,10 +112,17 @@ function firstView(){
 }
 
 function setupEventListeners() {
-    $('#bring-me-here').on('click', function() {
-        fetchAndDisplayRoutes(lat,lng);
+    $('#navigation-button').on('click', function() {
+        console.log("start fetching traffic")
+        fetch('/traffic/api/test')
+        .then(response => response.json())
+        .then(data => {
+            addAllRoutesToMap(data); // add polyline to the map without highlighting
+            displaySegmentedNavigationInstructions(data); // display segmented instructions
+        })
+        .catch(error => console.error('Error fetching routes:', error));
     });
-
+    
     // search for parking lots around ramen
     map.on('popupopen', function() {
         // use the map container to handle click event
@@ -286,7 +299,7 @@ function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     }
 
     // fetch the planned route 
-    fetch(`/traffic/api/v1.0/routes?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
+    fetch(`/traffic/api/v1.0/routes/combined?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
             addAllRoutesToMap(data); // add polyline to the map without highlighting
@@ -296,30 +309,65 @@ function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
 }
 
 function addAllRoutesToMap(routeData) {
+    // Clear previous routes
+    routesLayer.clearLayers();
+    bikeRoutesLayer.clearLayers();
     // add each sub-routes on routesLayer
-    routeData.routes[0].legs[0].steps.forEach(step => {
+    var fastestIndex = routeData.prompt[0].fastest_index;
+    routeData.routes[fastestIndex].legs[0].steps.forEach(step => {
         var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
-        L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5,}).addTo(routesLayer);
+        L.polyline(lineCoordinates, { color: '#0863F7', weight: 5,}).addTo(routesLayer);
     });
+
+    // add combined route if routeData.youbike_improve is 1
+    if (routeData.prompt[0].youbike_improve === 1) {
+        var youbikeRoute = routeData.routes[fastestIndex].legs[1][1];
+        youbikeRoute.steps.forEach(step => {
+            var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
+            L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5 }).addTo(bikeRoutesLayer);
+        });
+    }
 }
 
 function displaySegmentedNavigationInstructions(routeData) {
-    var instructionsContainer = $('#instructions-container');
-    instructionsContainer.empty(); // clean up before adding new routes Navigation Instructions
+    var mainInstructionsContainer = $('#main-instructions-container');
+    var youbikeInstructionsContainer = $('#youbike-instructions-container');
+    // clean up before adding new routes Navigation Instructions
+    mainInstructionsContainer.empty();
+    youbikeInstructionsContainer.empty();
 
-    var steps = routeData.routes[0].legs[0].steps;
-
-    steps.forEach((step, index) => {
-        var instructionText = step.navigationInstruction.instructions;
+    // Display instructions for the main route
+    var fastestIndex = routeData.prompt[0].fastest_index;
+    var mainSteps = routeData.routes[fastestIndex].legs[0].steps;
+    mainSteps.forEach((step, index) => {
+        var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
         var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
-        instructionsContainer.append(instruction);
+        mainInstructionsContainer.append(instruction);
 
         instruction.on('click', function() {
             var stepIndex = $(this).data('step-index');
-            highlightStep(stepIndex, steps);
+            highlightStep(stepIndex, mainSteps);
         });
     });
+
+    // If there's a YouBike route, display instructions for it
+    if (routeData.prompt[0].youbike_improve === 1) {
+        console.log("YouBike route get!")
+        var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
+        console.log(youbikeSteps)
+        youbikeSteps.forEach((step, index) => {
+            var instructionText = step.navigationInstruction.instructions;
+            var instruction = $('<div class="instruction youbike" data-step-index="' + index + '">' + instructionText + '</div>');
+            youbikeInstructionsContainer.append(instruction);
+
+            instruction.on('click', function() {
+                var stepIndex = $(this).data('step-index');
+                highlightStep(stepIndex, youbikeSteps);
+            });
+        });
+    }
 }
+
 
 
 function highlightStep(stepIndex, steps) {

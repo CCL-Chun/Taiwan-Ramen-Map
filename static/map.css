@@ -4,3 +4,36 @@
     background-size: contain; /* Adjust as needed */
     /* Other styling properties */
 }
+
+#instructions-wrapper {
+    display: flex;
+}
+
+/* Style for the instruction containers */
+.instructions-container {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
+/* Style for individual instructions */
+.instruction {
+    cursor: pointer;
+    padding: 5px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    transition: background-color 0.3s;
+}
+
+/* Hover effect for instructions */
+.instruction:hover {
+    background-color: #e5e5e5;
+}
+
+/* Style for YouBike instructions */
+.youbike {
+    color: #FF5733; /* Change color for YouBike instructions */
+}
+

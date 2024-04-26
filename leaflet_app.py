@@ -35,9 +35,89 @@ try:
     db = client['ramen-taiwan']
     collection_ramen = db['ramen_info']
     collection_parking = db['parking_info']
+    collection_youbike = db['youbike_info']
 
 except Exception as e:
     logging.error(f"Cannot connect to MongoDB!{e}")
+
+
+## function for finding nearest YouBike station
+def find_youbike(lat,lng):
+    near_youbike = list(collection_youbike.find({
+        "geometry":{
+            "$near":{
+                "$geometry":{ 
+                    "type": "Point", 
+                    "coordinates": [lng, lat]
+                }, 
+                "$maxDistance": 300
+            }
+        }
+    }).limit(3))
+
+    nearest = near_youbike[0]
+    return nearest
+
+## function for planning YouBike routes
+def route_youbike(start_lat,start_lng,end_lat,end_lng):
+    try:
+        googlemap_api_key = os.getenv("googlemaps_API_Key")
+    except Exception as e:
+        logging.error(f"Cannot get API KEY from env!{e}")
+
+    start_bike_station = find_youbike(float(start_lat),float(start_lng))
+    end_bike_station = find_youbike(float(end_lat),float(end_lng))
+
+    url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': googlemap_api_key,
+        'X-Goog-FieldMask': (
+            'routes.polyline,'
+            'routes.routeLabels,'
+            'routes.duration,'
+            'routes.distanceMeters,'
+            'routes.localizedValues,'
+            'routes.legs.distanceMeters,'
+            'routes.legs.stepsOverview,'
+            'routes.legs.steps.staticDuration,'
+            'routes.legs.steps.navigationInstruction,'
+            'routes.legs.steps.localizedValues,'
+            'routes.legs.steps.travelMode,'
+            'routes.legs.steps.polyline') # option 1
+    }
+    payload = {
+        "origin": {
+            "location": {"latLng": {"latitude":start_lat,"longitude":start_lng}} # option 2
+        },
+        "destination": {
+            "location": {"latLng": {"latitude":end_lat,"longitude":end_lng}} # option 3
+        },
+        "intermediates": [
+            {
+                "location":{
+                    "latLng":{
+                        "latitude": start_bike_station['geometry']['coordinates'][1],
+                        "longitude": start_bike_station['geometry']['coordinates'][0]
+                    }
+                }
+            },
+            {
+                "location":{
+                    "latLng":{
+                        "latitude": end_bike_station['geometry']['coordinates'][1],
+                        "longitude": end_bike_station['geometry']['coordinates'][0]
+                    }
+                }
+            }
+        ],
+        "travelMode": "WALK", # option 4
+        "computeAlternativeRoutes": "true",
+        "polylineEncoding": "GEO_JSON_LINESTRING", # specifying GeoJSON line string
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    return response
+
 
 app = Flask(__name__)
 # app.config['SECRET_KEY'] = 'secret!'
@@ -58,7 +138,7 @@ def get_ramens():
             "$geoWithin":{
                 "$centerSphere":[
                         [lng, lat],
-                        1.5 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
+                        2 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
                 ]
             }
         }
@@ -115,7 +195,8 @@ def get_parking():
 
     return jsonify(parking_data)
 
-@app.route("/traffic/api/v1.0/routes", methods=['GET'])
+
+@app.route("/traffic/api/v1.0/routes/combined", methods=['GET'])
 def route_plan():
     start_lat = request.args.get('start_lat')
     start_lng = request.args.get('start_lng')
@@ -162,14 +243,86 @@ def route_plan():
     }
     try:
         response = requests.post(url, headers=headers, json=payload)
-        result = response.json()
-        print(result)
-        return result
-    except Exception as e:
-        print(e)
-        return e, 500    
-        
+        # check the response status code
+        if response.status_code == 200:
+            result = response.json()
+        else:
+            raise Exception(f"{response.text}")
 
+        # decide making another YouBike request or not
+        time = []
+        for i in result['routes']:
+            time.append(i['duration'])
+        concat_index = time.index(min(time))
+        print(f"concat_index: {concat_index}")
+
+        way = []
+        fastest_route = result['routes'][concat_index]['legs']
+        for i in fastest_route[0]['steps']:
+            if 'transitDetails' in i.keys():
+                way.append(i['transitDetails']['transitLine']['vehicle']['type'])
+            else:
+                way.append(i['travelMode'])
+        
+        print(way)
+        # planning YouBike route start from the end of the first bus route
+        bike_route = []
+        if way.count('BUS') > 1:
+            change_index = way.index('BUS') # the index of route to break and concat YouBike route
+            change_location = fastest_route[0]['steps'][change_index]['transitDetails']['stopDetails']['arrivalStop']['location']['latLng']
+            print(f"change_index: {change_index}")
+
+            try:
+                Bike_response = route_youbike(change_location['latitude'],change_location['longitude'],end_lat,end_lng)
+                if Bike_response.status_code == 200:
+                    Bike = Bike_response.json()
+                    youbike_route = Bike['routes'][0]['legs']
+            except Exception as e:
+                raise Exception(f"Error fetching route_youbike: {e}")
+            
+            print(f"length of youbike_route: {len(youbike_route)}")
+            if len(youbike_route) == 3:
+                # WALK from bus stop to YouBike
+                for step in youbike_route[0]['steps']:
+                    bike_route.append(step)
+                ## YouBike route
+                for step in youbike_route[1]['steps']:
+                    step['travelMode']= 'YouBike2'
+                    bike_route.append(step)
+                # WALK from YouBike to ramen
+                for step in youbike_route[2]['steps']:
+                    bike_route.append(step)
+            else:
+                raise Exception(f"Total {len(youbike_route)} steps for 4 waypoints!")
+        print(bike_route)
+        
+        if bike_route:
+            try:
+                combined_route = fastest_route[0]['steps'][:change_index+1]
+            except Exception as e:
+                raise Exception(f"Wrong in combined_route: {e}")
+            try:
+                ## append improved route into legs
+                result['routes'][concat_index]['legs'].append([
+                    {'stepsOverview' : 'combined'},
+                    {'steps' : combined_route+bike_route}
+                ])
+            except Exception as e:
+                raise Exception(f"Wrong in result: {e}")
+
+    except Exception as e:
+        logging.error(f"Wrong in google route API: {e}")
+        print(e)
+        return e, 500
+    
+    # add prompt for front-end to quick indexing
+    result['prompt'] = [{
+        'fastest_index' : concat_index,
+        'youbike_improve' : 1 if bike_route else 0
+    }]
+
+    return jsonify(result)
+    
 # Handle the connection
 # @socketio.on('connect')
 # def handle_connect():
