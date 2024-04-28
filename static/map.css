@@ -38,9 +38,9 @@
 }
 
 /* Position the navigation button to the right side */
-.navigation-button-container {
-    text-align: right;
-    padding-right: 5px; /* padding */
+.navigation-button {
+    float: right;
+    margin-right: 5px; /* padding */
 }
 
 /* Make image of ramen in constant size */
