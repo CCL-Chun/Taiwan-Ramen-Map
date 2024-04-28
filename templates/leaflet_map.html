@@ -14,7 +14,6 @@
 <body>
     <div id="map" style="height: 600px;"></div>
     <button id="navigation-button" class="btn btn-primary">導航</button>
-    <button id="details" data-id="ChIJC80A4HqrQjQRtd3O1BQDARU" class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">詳細情報</button>
     <div id="instructions-wrapper">
         <div id="main-instructions-container" class="instructions-container"></div>
         <div id="youbike-instructions-container" class="instructions-container"></div>
@@ -22,13 +21,20 @@
 
     <div class="offcanvas offcanvas-start" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
         <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="offcanvasScrollingLabel">Details</h5>
+            <img class="ramen-image" alt="Base64 Image">
+            <h3 class="offcanvas-title" id="offcanvasScrollingLabel">Details</h3>
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
-            <h4>Socket.io API (test)</h4>
+            <div class="official-site"></div>
+            <div class="address"></div>
+            <div class="open-time"></div>
+            <div class="overall-rating"></div>
+            <div class="google-maps"></div>
+
+            <h5>現場即時回報</h5>
             <form id="emit" action='#'>
-                <textarea name="emit_data" id="emit_data" placeholder="Enter your message here..." cols="50" rows="5"></textarea>
+                <textarea name="emit_data" id="emit_data" placeholder="Enter your message here..." cols="30" rows="5"></textarea>
                 <input type="submit" value="Run">
             </form>
             <div id='log'></div>

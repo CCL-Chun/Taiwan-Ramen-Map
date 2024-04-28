@@ -158,13 +158,36 @@ def get_ramens():
             "address": ramen["address"],
             "weekday": weekDaysMapping[weekday()],
             "open": ramen["open_time"][weekDaysMapping[weekday()]] if ramen["open_time"] else "不定",
-            "overall": ramen["overall_rating"]["mean"]
+            "overall": ramen["overall_rating"]["mean"],
+            "id": ramen["place_id"] if "place_id" in ramen else ramen["name"]
         }
     } for ramen in ramen_data]
 
     print(len(ramen_data))
 
     return jsonify(ramen_geojson)
+
+
+@app.route("/ramen/api/v1.0/details", methods=["GET"])
+def ramen_details():
+    place_id = request.args.get('id')
+    ramen_details = collection_ramen.find_one({"place_id": place_id})
+    
+    if ramen_details:
+        details_dict = {
+            "name": ramen_details['name'],
+            "open_time": ramen_details['open_time'],
+            "maps_url": ramen_details['maps_url'],
+            "img_base64": ramen_details['img_base64'],
+            "website": ramen_details['website'],
+            "overall_rating": ramen_details['overall_rating'],
+            "address": ramen_details['address'],
+            "place_id": ramen_details['place_id']
+        }
+    
+        return jsonify(details_dict), 200
+    else:
+        return jsonify(f"place id {place_id} not found"), 403
 
 
 @app.route("/traffic/api/v1.0/parking", methods=["GET"])
@@ -333,15 +356,16 @@ def handle_connect():
 
 # Handle custom connect event from client
 @socketio.on('connect_event')
-def handle_custom_connect_event(json):
-    print('Received connect_event: ' + str(json))
-    emit('server_response', {'data': 'Server connected!'},broadcast=True)
+def handle_custom_connect_event(data):
+    print('Received connect_event: ' + str(data))
+    emit('server_response', {'data': 'Server connected!'})
 
 # Handle client event
 @socketio.on('client_event')
-def handle_client_event(json):
-    print('Received data: ' + str(json))
-    emit('server_response', {'message': str(json['data'])},broadcast=True)
+def handle_client_event(data):
+    room_id = data['id']
+    print('Received data: ' + str(data))
+    emit('server_response', {'message': str(data['data'])},room=room_id)
 
 @socketio.on('join_room')
 def on_join(data):

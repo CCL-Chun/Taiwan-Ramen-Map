@@ -197,7 +197,11 @@ function updateRamen(){
                                             '>附近停車位</button>' + '<br>' +
                                         '<button class="bring-me-here" lng=' + feature.geometry.coordinates[0] + 
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                            '>拉麵突進導航</button>';
+                                            '>拉麵突進導航</button>' + '<br>' +
+                                        '<button id=' + feature.properties.id + ' ' +
+                                            'class="btn btn-primary" type="button" data-bs-toggle="offcanvas" ' +
+                                            'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
+                                            '詳細資訊與現場情報</button>';
                             layer.bindPopup(popupContent);
                         }
                     }
@@ -380,16 +384,46 @@ function highlightStep(stepIndex, steps) {
 
 // Event listener for opening the offcanvas
 document.addEventListener('DOMContentLoaded', function() {
-    var detailsButton = document.getElementById('details');
     var offcanvasElement = document.getElementById('offcanvasScrolling');
 
-    detailsButton.addEventListener('click', function() {
-        var currentId = this.getAttribute('data-id');  // get the data-id attribute from the button
-
-        offcanvasElement.setAttribute('data-current-id', currentId); // set the data-current-id attribute on the offcanvas before showing it
+    document.body.addEventListener('click', function(event) {
+        if (event.target.matches('[data-bs-toggle="offcanvas"]')) {
+            var currentId = event.target.id;  // get the id attribute from the button
+            offcanvasElement.setAttribute('data-current-id', currentId); // set the data-current-id attribute on the offcanvas before showing it
         
-        var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
-        bsOffcanvas.show(); // show the offcanvas
+            fetch(`/ramen/api/v1.0/details?id=${currentId}`)
+                .then(response => response.json())
+                .then(ramen_details => {
+                    document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
+                    document.querySelector('.offcanvas-header img').setAttribute('src', ramen_details.img_base64);
+                    document.querySelector('.offcanvas-body .official-site').innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;;
+                    document.querySelector('.offcanvas-body .address').textContent = "Address: " + ramen_details.address;
+                    document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.google_maps}" target="_blank">在google地圖中顯示</a>`;
+
+                    const openTimeContainer = document.querySelector('.offcanvas-body .open-time');
+                    openTimeContainer.innerHTML = '';
+                    for (const day in ramen_details.open_time) {
+                        if (ramen_details.open_time.hasOwnProperty(day)) {
+                            const openTime = ramen_details.open_time[day];
+                            document.querySelector('.offcanvas-body .open-time').innerHTML += `<p>${day}: ${openTime}</p>`;
+                        }
+                    }
+
+                    const overallRating = ramen_details.overall_rating;
+                    const ratingDetails = `
+                        <p>平均: ${overallRating.mean} / 5</p>
+                        <p>5星: ${ramen_details.overall_rating.amount_5}</p>
+                        <p>4星: ${ramen_details.overall_rating.amount_4}</p>
+                        <p>3星: ${ramen_details.overall_rating.amount_3}</p>
+                        <p>2星: ${ramen_details.overall_rating.amount_2}</p>
+                        <p>1星: ${ramen_details.overall_rating.amount_1}</p>`;
+
+                    document.querySelector('.offcanvas-body .overall-rating').innerHTML = ratingDetails;
+                });
+
+            var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
+            bsOffcanvas.show(); // show the offcanvas
+        }
 
         // retrieve the ID set after opened
         var currentId = offcanvasElement.getAttribute('data-current-id');
@@ -410,32 +444,36 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             // use the ID to emit a message or join a specific room
-            window.socket.emit('join_room', { id: currentId });
+            window.socket.emit('join_room', { "id": currentId });
         }
     });
 
     offcanvasElement.addEventListener('hidden.bs.offcanvas', function(event) {
         var currentId = this.getAttribute('data-current-id');
+        var logElement = document.getElementById('log');
 
         if (window.socket) {
-            window.socket.emit('leave_room', { id: currentId });
+            window.socket.emit('leave_room', { "id": currentId });
             window.socket.disconnect();
             window.socket = null;
             console.log('Socket.IO disconnected for ID:', currentId);
         }
+
+        logElement.innerHTML = ''; 
     });
-});
 
-
-document.addEventListener('DOMContentLoaded', function() {
     var formElement = document.getElementById('emit');
     var inputElement = document.getElementById('emit_data');
 
     formElement.addEventListener('submit', function(event) {
+        var currentId = offcanvasElement.getAttribute('data-current-id');
         event.preventDefault();
         if (window.socket && window.socket.connected) {
             var messageToSend = inputElement.value;
-            window.socket.emit('client_event', { "data": messageToSend });
+            window.socket.emit('client_event', {
+                "data": messageToSend,
+                "id": currentId 
+            });
             inputElement.value = '';  // clear the input after sending
         } else {
             console.error("Socket.IO connection not established.");
