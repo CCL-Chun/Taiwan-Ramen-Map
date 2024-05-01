@@ -86,12 +86,45 @@ $(document).ready(function() {
 
 function initializeMap(lat = 25.052430, lng = 121.520270) {
 
+    let CartoDB_Voyager = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        });
+
+    let CartoDB_VoyagerLabelsUnder = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        });
+
+    let OpenStreetMap_HOT = L.tileLayer(
+        'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+        });
+
+    // let Stadia_OSMBright = L.tileLayer(
+    //     'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
+    //         minZoom: 0,
+    //         maxZoom: 20,
+    //         attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    //         ext: 'png'
+    //     });
+
     let osmBike = L.tileLayer(
         'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
             maxZoom : 24,
             attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }
-    );
+        });
+
+    var OpenRailwayMap = L.tileLayer(
+        'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
 
     let startMarker = L.marker([lat, lng]).bindPopup('拉麵暴徒在此')
     startPoint = L.layerGroup([startMarker]);
@@ -100,16 +133,21 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     map = L.map('map',{
         center: [lat, lng],
         zoom: 16,
-        layers: [osmBike,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer]
+        layers: [CartoDB_Voyager,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer]
     });
 
     var baseMaps = {
-        "基本單車道地圖": osmBike
+        "CartoDB_Voyager": CartoDB_Voyager,
+        "CartoDB_VoyagerLabelsUnder": CartoDB_VoyagerLabelsUnder,
+        "OpenStreetMap_HOT": OpenStreetMap_HOT,
+        // "Stadia_OSMBright": Stadia_OSMBright,
+        "osmBike": osmBike
     };
     
     var overlayMaps = {
         "拉麵店": ramenLayer,
         "停車格": parkingLayer,
+        "捷運/台鐵/高鐵": OpenRailwayMap,
         "規劃路線(完整)": routesLayer,
         "規劃路線(部分重點)": highlightedRouteLayer,
         "優化路線(結合YouBike)": bikeRoutesLayer
@@ -118,15 +156,19 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     L.control.layers(baseMaps, overlayMaps).addTo(map);
     startMarker.openPopup();
 
-    var homeCoordinates = [lat, lng];
-    var homeZoom = 16;
-    
     // create a home button
-    map.addControl(new HomeControl({ homeCoordinates: homeCoordinates, homeZoom: homeZoom }));
+    let homeCoordinates = [lat, lng];
+    let homeZoom = 16;
+    map.addControl(
+        new HomeControl({
+            homeCoordinates: homeCoordinates,
+            homeZoom: homeZoom,
+            position: 'bottomright'
+        }),
+    );
 
-    var pointA = [25.0384799,121.5323702];
-    var pointB = [25.0471126,121.541689];
-    L.polyline([pointA,pointB], { color: '#08F7F7', weight: 5, dashArray: '20 20'}).addTo(routesLayer);
+    // move zoom controller to bottomright
+    map.zoomControl.setPosition('bottomright');
 }
 
 // first view of the map
@@ -214,14 +256,14 @@ function updateRamen(){
                                         '<br>' + feature.properties.weekday + feature.properties.open +
                                         '<br>評分: ' + feature.properties.overall + ' / 5'+
                                         '<br>' + feature.properties.address + '<br>' + 
-                                        '<button class="find-parking" lng=' + feature.geometry.coordinates[0] + 
+                                        '<button class="find-parking btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
                                             '>附近停車位</button>' + '<br>' +
-                                        '<button class="bring-me-here" lng=' + feature.geometry.coordinates[0] + 
+                                        '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
                                             '>拉麵突進導航</button>' + '<br>' +
                                         '<button id=' + feature.properties.id + ' ' +
-                                            'class="btn btn-primary" type="button" data-bs-toggle="offcanvas" ' +
+                                            'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
                                             'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
                                             '詳細資訊與現場情報</button>';
                             layer.bindPopup(popupContent);
