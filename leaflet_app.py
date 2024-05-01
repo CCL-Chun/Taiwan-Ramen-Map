@@ -126,7 +126,7 @@ def check_and_log_missing_data(ramen, field):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='gevent')
 
 @app.route("/details")
 def show_detail_page():
