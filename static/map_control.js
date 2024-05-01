@@ -46,19 +46,41 @@ $(document).ready(function() {
         firstView();
     }
 
-    // check if user's geolocation is available
-    if ("geolocation" in navigator) {
+    // Number of retries
+    var maxRetries = 3;
+    var retryCount = 0;
+    // Function to fetch geolocation
+    function fetchGeolocation() {
+        var options = {
+            enableHighAccuracy: true,
+            timeout: 3000,
+            maximumAge: 0
+        };
+
         navigator.geolocation.getCurrentPosition(function(position) {
             defaultLat = position.coords.latitude;
             defaultLng = position.coords.longitude;
             init();
         }, function(error) {
             console.error("Error while fetching geolocation: ", error);
-            init(); // initialize map with default location 中山
-        });
+            retryCount++;
+            if (retryCount < maxRetries) {
+                // Retry fetching geolocation
+                fetchGeolocation();
+            } else {
+                console.error("Maximum retries reached. Unable to fetch geolocation.");
+                init(); // Initialize map with default location
+            }
+        }, options);
+    }
+
+    // check if user's geolocation is available
+    if ("geolocation" in navigator) {
+        // Attempt to fetch geolocation
+        fetchGeolocation();
     } else {
         console.error("Geolocation is not supported by this browser.");
-        init(); // initialize map with default location 中山
+        init(); // Initialize map with default location
     }
 });
 
@@ -423,28 +445,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
             bsOffcanvas.show(); // show the offcanvas
-        }
 
-        // retrieve the ID set after opened
-        var currentId = offcanvasElement.getAttribute('data-current-id');
+            // initialize or use existing Socket.IO connection
+            if (!window.socket) {
+                window.socket = io('https://ramentaiwan.info/');
 
-        // initialize or use existing Socket.IO connection
-        if (!window.socket) {
-            window.socket = io('http://127.0.0.1:5000');
+                window.socket.on('connect', function() {
+                    console.log('Socket.IO connected for ID:', currentId);
+                    // use the ID to emit a message or join a specific room
+                    window.socket.emit('join_room', { "id": currentId });
+                });
 
-            window.socket.on('connect', function() {
-                console.log('Socket.IO connected for ID:', currentId);
-            });
-
-            window.socket.on('server_response', function(data) {
-                var logElement = document.getElementById('log');
-                var div = document.createElement('div');
-                div.textContent = 'Received: ' + data.message;
-                logElement.appendChild(div);
-            });
-
-            // use the ID to emit a message or join a specific room
-            window.socket.emit('join_room', { "id": currentId });
+                window.socket.on('server_response', function(data) {
+                    var logElement = document.getElementById('log');
+                    var div = document.createElement('div');
+                    div.textContent = 'Received: ' + data.message;
+                    logElement.appendChild(div);
+                });
+            }
         }
     });
 
