@@ -118,6 +118,11 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
     response = requests.post(url, headers=headers, json=payload)
     return response
 
+def check_and_log_missing_data(ramen, field):
+    if field not in ramen or not ramen[field]:
+        logging.exception(f"Missing {field} for {ramen.get('_id', '待補')}\t{ramen.get('name', '待補')}")
+        return True
+    return False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -154,14 +159,14 @@ def get_ramens():
         "geometry": ramen["location"],
         "properties":
         {
-            "name": ramen["name"],
-            "address": ramen["address"],
+            "name": ramen.get("name","待補"),
+            "address": ramen.get("address","暫無"),
             "weekday": weekDaysMapping[weekday()],
             "open": ramen["open_time"][weekDaysMapping[weekday()]] if ramen["open_time"] else "不定",
             "overall": ramen["overall_rating"]["mean"],
-            "id": ramen["place_id"] if "place_id" in ramen else ramen["name"]
+            "id": ramen.get("place_id",ramen.get("name","待補"))
         }
-    } for ramen in ramen_data]
+    } for ramen in ramen_data if not any(check_and_log_missing_data(ramen, key) for key in ["address", "open_time", "overall_rating", "place_id"])]
 
     print(len(ramen_data))
 
@@ -320,7 +325,7 @@ def route_plan():
                     bike_route.append(step)
             else:
                 raise Exception(f"Total {len(youbike_route)} steps for 4 waypoints!")
-        print(bike_route)
+        # print(bike_route)
         
         if bike_route:
             try:
@@ -339,7 +344,7 @@ def route_plan():
     except Exception as e:
         logging.error(f"Wrong in google route API: {e}")
         print(e)
-        return e, 500
+        return jsonify(result)
     
     # add prompt for front-end to quick indexing
     result['prompt'] = [{
