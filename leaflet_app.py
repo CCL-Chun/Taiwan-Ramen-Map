@@ -55,8 +55,11 @@ def find_youbike(lat,lng):
         }
     }).limit(3))
 
-    nearest = near_youbike[0]
-    return nearest
+    if near_youbike:
+        nearest = near_youbike[0]
+        return nearest
+    else:
+        return Exception("Find no YouBike stations")
 
 ## function for planning YouBike routes
 def route_youbike(start_lat,start_lng,end_lat,end_lng):
@@ -65,8 +68,11 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
     except Exception as e:
         logging.error(f"Cannot get API KEY from env!{e}")
 
-    start_bike_station = find_youbike(float(start_lat),float(start_lng))
-    end_bike_station = find_youbike(float(end_lat),float(end_lng))
+    try:
+        start_bike_station = find_youbike(float(start_lat),float(start_lng))
+        end_bike_station = find_youbike(float(end_lat),float(end_lng))
+    except Exception as e:
+        return f"{e} Use origin plan.",403
 
     url = "https://routes.googleapis.com/directions/v2:computeRoutes"
     headers = {
@@ -126,7 +132,7 @@ def check_and_log_missing_data(ramen, field):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, async_mode='gevent')
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
 @app.route("/details")
 def show_detail_page():
@@ -146,11 +152,11 @@ def get_ramens():
             "$geoWithin":{
                 "$centerSphere":[
                         [lng, lat],
-                        2 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
+                        4 / 6378.1 # equatorial radius of Earth is approximately 6,378.1 kilometers
                 ]
             }
         }
-    }).limit(50))
+    }).limit(100))
     # initialize GeoJSON format
     ramen_geojson = {"type":"FeatrureCollection"}
     # put data into features list
@@ -166,7 +172,7 @@ def get_ramens():
             "overall": ramen["overall_rating"]["mean"],
             "id": ramen.get("place_id",ramen.get("name","待補"))
         }
-    } for ramen in ramen_data if not any(check_and_log_missing_data(ramen, key) for key in ["address", "open_time", "overall_rating", "place_id"])]
+    } for ramen in ramen_data if not any(check_and_log_missing_data(ramen, key) for key in ["address", "open_time", "overall_rating", "features", "place_id"])]
 
     print(len(ramen_data))
 
@@ -187,7 +193,9 @@ def ramen_details():
             "website": ramen_details['website'],
             "overall_rating": ramen_details['overall_rating'],
             "address": ramen_details['address'],
-            "place_id": ramen_details['place_id']
+            "place_id": ramen_details['place_id'],
+            "features": ramen_details.get("features","由你來介紹"),
+            "similar": ramen_details.get("top_similar","由你來推薦")
         }
     
         return jsonify(details_dict), 200
@@ -369,20 +377,32 @@ def handle_custom_connect_event(data):
 @socketio.on('client_event')
 def handle_client_event(data):
     room_id = data['id']
-    print('Received data: ' + str(data))
-    emit('server_response', {'message': str(data['data'])},room=room_id)
+    print(f'{datetime.now(pytz.utc).strftime("%Y/%m/%d %H:%M:%S")} Received data: {str(data)}')
+    emit('server_response', {
+        'message': str(data['data']),
+        'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
+        'romm_id': f'room id: {room_id}',
+    }, room=room_id)
 
 @socketio.on('join_room')
 def on_join(data):
     room_id = data['id']
     join_room(room_id)
-    emit('server_response', {'message': f'Joined room {room_id}'}, room=room_id)
+    # emit('server_response', {
+    #     'message': 'Joined room',
+    #     'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
+    #     'romm_id': f'room id: {room_id}'
+    # }, room=room_id)
 
 @socketio.on('leave_room')
 def on_leave(data):
     room_id = data['id']
     leave_room(room_id)
-    emit('server_response', {'message': f'Left room {room_id}'}, room=room_id)
+    # emit('server_response', {
+    #     'message': 'Left room',
+    #     'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
+    #     'romm_id': f'room id: {room_id}'
+    # }, room=room_id)
 
 
 

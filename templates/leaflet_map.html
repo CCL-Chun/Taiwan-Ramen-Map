@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Leaflet Map Example</title>
+    <title>Taiwan Ramen Map</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -12,7 +12,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 </head>
 <body>
-    <div id="map" style="height: 600px;"></div>
+    <div id="map"></div>
     <div id="instructions-wrapper">
         <div id="main-instructions-container" class="instructions-container"></div>
         <div id="youbike-instructions-container" class="instructions-container"></div>
@@ -25,12 +25,19 @@
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
+            <div class="ramen-features"></div>
+            <br>
             <div class="official-site"></div>
             <div class="address"></div>
             <div class="open-time"></div>
             <div class="overall-rating"></div>
+            <br>
+            <div class="recommend">
+                麵友推薦:
+                <div class="ramen-recommend"></div>
+            </div>
             <div class="google-maps"></div>
-
+            <br>
             <h5>現場即時回報</h5>
             <form id="emit" action='#'>
                 <textarea name="emit_data" id="emit_data" placeholder="Enter your message here..." cols="30" rows="5"></textarea>

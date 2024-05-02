@@ -37,14 +37,13 @@
     color: #FF5733; /* Change color for YouBike instructions */
 }
 
-/* Position the navigation button to the right side */
-.navigation-button {
-    float: right;
-    margin-right: 5px; /* padding */
-}
-
 /* Make image of ramen in constant size */
 .ramen-image {
     width: 200px;
     height: auto; /* Maintain aspect ratio */
+}
+
+#map {
+    height: 100vh;
+    width: 100%;
 }

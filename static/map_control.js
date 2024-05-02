@@ -228,7 +228,7 @@ function setupEventListeners() {
             }
         }
         else{
-            lastMoveLatLng = map.getCenter();
+            lastMoveLatLng = [defaultLat, defaultLng];
         };
         lastMoveLatLng = newLatLng;
     });
@@ -277,7 +277,7 @@ function updateRamen(){
 // button for update ramen
 function displayUpdateRamenButton() {
     // Create a button element
-    var button = L.DomUtil.create('button', 'leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
+    var button = L.DomUtil.create('button', 'btn btn-warning leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
     button.innerHTML = 'Update Ramen';
     button.title = 'Update Ramen';
     
@@ -461,28 +461,77 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
                     document.querySelector('.offcanvas-header img').setAttribute('src', ramen_details.img_base64);
                     document.querySelector('.offcanvas-body .official-site').innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;;
-                    document.querySelector('.offcanvas-body .address').textContent = "Address: " + ramen_details.address;
-                    document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.google_maps}" target="_blank">在google地圖中顯示</a>`;
-
+                    document.querySelector('.offcanvas-body .address').textContent = "地址: " + ramen_details.address;
+                    document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.maps_url}" target="_blank">在google地圖中顯示</a>`;
+                    
+                    // open time
                     const openTimeContainer = document.querySelector('.offcanvas-body .open-time');
                     openTimeContainer.innerHTML = '';
-                    for (const day in ramen_details.open_time) {
-                        if (ramen_details.open_time.hasOwnProperty(day)) {
-                            const openTime = ramen_details.open_time[day];
-                            document.querySelector('.offcanvas-body .open-time').innerHTML += `<p>${day}: ${openTime}</p>`;
-                        }
-                    }
+                    
+                    const chineseWeekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+                    let collapseContent = '';
 
+                    chineseWeekdays.forEach(day => {
+                            const openTime = ramen_details.open_time[day];
+                            collapseContent += `<p>${day}: ${openTime}</p>`;
+                    });
+
+                    openTimeContainer.innerHTML = `
+                        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#openingTimesCollapse" aria-expanded="false" aria-controls="openingTimesCollapse">
+                            <span>營業時間 &#9660</sapn>
+                        </button>
+                        <div class="collapse" id="openingTimesCollapse">
+                            ${collapseContent}
+                        </div>
+                    `;
+                    
+                    // ramen feature tags
+                    const ramenFeaturesContainer = document.querySelector('.offcanvas-body .ramen-features');
+                    ramenFeaturesContainer.innerHTML = '';
+                    for (const features of ramen_details.features) {
+                        ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>`;
+                    };
+
+                    // rating
                     const overallRating = ramen_details.overall_rating;
+                    const totalReviews = overallRating.amount_5 + overallRating.amount_4 + overallRating.amount_3 + overallRating.amount_2 + overallRating.amount_1;
+                    const meanRating = parseFloat(overallRating.mean);
+
                     const ratingDetails = `
-                        <p>平均: ${overallRating.mean} / 5</p>
-                        <p>5星: ${ramen_details.overall_rating.amount_5}</p>
-                        <p>4星: ${ramen_details.overall_rating.amount_4}</p>
-                        <p>3星: ${ramen_details.overall_rating.amount_3}</p>
-                        <p>2星: ${ramen_details.overall_rating.amount_2}</p>
-                        <p>1星: ${ramen_details.overall_rating.amount_1}</p>`;
+                        <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#ratingCollapse" aria-expanded="false" aria-controls="ratingCollapse">
+                            <span>評分: ${meanRating} &starf; </span>  
+                            <span>看分佈  &#9662;</span>
+                        </button>
+                        <div class="collapse" id="ratingCollapse">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: ${(overallRating.amount_5 / totalReviews) * 100}%">
+                                    5星: ${overallRating.amount_5}
+                                </div>
+                                <div class="progress-bar bg-info" role="progressbar" style="width: ${(overallRating.amount_4 / totalReviews) * 100}%">
+                                    4星: ${overallRating.amount_4}
+                                </div>
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: ${(overallRating.amount_3 / totalReviews) * 100}%">
+                                    3星: ${overallRating.amount_3}
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: ${(overallRating.amount_2 / totalReviews) * 100}%">
+                                    2星: ${overallRating.amount_2}
+                                </div>
+                                <div class="progress-bar bg-secondary" role="progressbar" style="width: ${(overallRating.amount_1 / totalReviews) * 100}%">
+                                    1星: ${overallRating.amount_1}
+                                </div>
+                            </div>
+                        </div>`;
 
                     document.querySelector('.offcanvas-body .overall-rating').innerHTML = ratingDetails;
+
+                    // recommend
+                    console.log(ramen_details.similar)
+                    const recommendContainer = document.querySelector('.offcanvas-body .ramen-recommend');
+                    recommendContainer.innerHTML = '';
+                    for (const recommend of ramen_details.similar) {
+                        recommendContainer.innerHTML += `<span class="badge bg-secondary text-light">${recommend}</span>`;
+                    };
+
                 });
 
             var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
@@ -501,9 +550,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.socket.on('server_response', function(data) {
                     var logElement = document.getElementById('log');
                     var div = document.createElement('div');
-                    div.textContent = 'Received: ' + data.message;
+                    // div.textContent = 'Received: ' + data.message;
+                    div.innerHTML = data.time + '<br>' + "    " + data.message;
                     logElement.appendChild(div);
                 });
+            } else {
+                bsOffcanvas.hide();
             }
         }
     });
@@ -532,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var messageToSend = inputElement.value;
             window.socket.emit('client_event', {
                 "data": messageToSend,
-                "id": currentId 
+                "id": currentId
             });
             inputElement.value = '';  // clear the input after sending
         } else {
