@@ -260,8 +260,9 @@ function updateRamen(){
                                             ' ' + 'lat=' + feature.geometry.coordinates[1] +
                                             '>附近停車位</button>' + '<br>' +
                                         '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
-                                            ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                            '>拉麵突進導航</button>' + '<br>' +
+                                            ' ' + 'lat=' + feature.geometry.coordinates[1] + ' type="button" data-bs-toggle="offcanvas" ' +
+                                            'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
+                                            '拉麵突進導航</button>' + '<br>' +
                                         '<button id=' + feature.properties.id + ' ' +
                                             'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
                                             'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
@@ -423,7 +424,6 @@ function displaySegmentedNavigationInstructions(routeData) {
     if (routeData.prompt[0].youbike_improve === 1) {
         console.log("YouBike route get!")
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
-        console.log(youbikeSteps)
         youbikeSteps.forEach((step, index) => {
             var instructionText = step.navigationInstruction.instructions;
             var instruction = $('<div class="instruction youbike" data-step-index="' + index + '">' + instructionText + '</div>');
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var offcanvasElement = document.getElementById('offcanvasScrolling');
 
     document.body.addEventListener('click', function(event) {
-        if (event.target.matches('[data-bs-toggle="offcanvas"]')) {
+        if (event.target.matches('[data-bs-toggle="offcanvas"]') && event.target.getAttribute('data-bs-target') !== '#instructions-wrapper') {
             var currentId = event.target.id;  // get the id attribute from the button
             offcanvasElement.setAttribute('data-current-id', currentId); // set the data-current-id attribute on the offcanvas before showing it
         
@@ -589,6 +589,46 @@ document.addEventListener('DOMContentLoaded', function() {
             inputElement.value = '';  // clear the input after sending
         } else {
             console.error("Socket.IO connection not established.");
+        }
+    });
+});
+
+
+function toggleOffCanvasVisibility() {
+    var offcanvasElement = document.getElementById('instructions-wrapper');
+    var bsOffcanvas = new bootstrap.Offcanvas(offcanvasElement);
+
+    if (offcanvasElement.classList.contains('show')) {
+        bsOffcanvas.hide();
+    } else {
+        bsOffcanvas.show();
+    }
+}
+
+document.getElementById('instructions-wrapper').addEventListener('shown.bs.offcanvas', function () {
+    document.getElementById('toggleButton').style.display = 'none'; // Hide button when off-canvas is open
+});
+
+document.getElementById('offcanvasScrolling').addEventListener('shown.bs.offcanvas', function () {
+    document.getElementById('toggleButton').style.left = '300px'; // Hide button when off-canvas is open
+});
+
+let offcanvasElements = document.querySelectorAll('.offcanvas');
+
+// Loop through each element and attach the event listener
+offcanvasElements.forEach(function(offcanvas) {
+    offcanvas.addEventListener('hidden.bs.offcanvas', function () {
+        // Assuming 'offcanvasScrolling' is a specific off-canvas you want to check
+        var offcanvasDetails = document.getElementById('offcanvasScrolling');
+        var toggleButton = document.getElementById('toggleButton');
+
+        // Check if the specific off-canvas is still shown or not
+        if (offcanvasDetails && offcanvasDetails.classList.contains('show')) {
+            toggleButton.style.display = 'block'; // Show button when off-canvas is open
+            toggleButton.style.left = '300px';
+        } else {
+            toggleButton.style.display = 'block'; // Show button when all off-canvas are closed
+            toggleButton.style.left = '0px';
         }
     });
 });

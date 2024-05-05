@@ -13,10 +13,6 @@
 </head>
 <body>
     <div id="map"></div>
-    <div id="instructions-wrapper">
-        <div id="main-instructions-container" class="instructions-container"></div>
-        <div id="youbike-instructions-container" class="instructions-container"></div>
-    </div>
 
     <div class="offcanvas offcanvas-start" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
         <div class="offcanvas-header">
@@ -46,7 +42,36 @@
             <div id='log'></div>
         </div>
     </div>
-  
+
+    <!-- Button to toggle the visibility of the off-canvas -->
+    <button class="btn btn-primary" id="toggleButton" onclick="toggleOffCanvasVisibility()" style="display: none;">導航>></button>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" data-bs-backdrop="false" id="instructions-wrapper" data-bs-scroll="true" aria-labelledby="instructions-wrapperLabel" style="z-index: 1045; visibility: hidden;">
+        <div class="offcanvas-header">
+            <h5 id="offcanvasBottomLabel">Instructions</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <!-- Tab navigation for paginated content -->
+            <ul class="nav nav-pills" id="instructionTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="main-instructions-tab" data-bs-toggle="tab" data-bs-target="#main-instructions-container" type="button" role="tab" aria-controls="main-instructions-container" aria-selected="true">規劃路線</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="youbike-instructions-tab" data-bs-toggle="tab" data-bs-target="#youbike-instructions-container" type="button" role="tab" aria-controls="youbike-instructions-container" aria-selected="false">優化路線</button>
+                </li>
+            </ul>
+            <!-- Tab content areas -->
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="main-instructions-container" role="tabpanel" aria-labelledby="main-instructions-tab">
+                    Main Instructions
+                </div>
+                <div class="tab-pane fade" id="youbike-instructions-container" role="tabpanel" aria-labelledby="youbike-instructions-tab">
+                    YouBike Instructions
+                </div>
+            </div>
+        </div>
+    </div>
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
