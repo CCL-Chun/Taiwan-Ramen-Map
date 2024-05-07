@@ -106,7 +106,6 @@ def scrape_with_selenium(name,maps_url,alias):
             get_url = driver.current_url
             url = re.sub(r'@([-\d.]+),([-\d.]+),(\d+).*(\d+)\w/','',get_url)
             new_url = re.sub(r'place/.*/data','place/data',url)
-            # print(url)
             coord = re.search(r'([-\d.]+)(!4d)([-\d.]+)',get_url)
             latitude = coord.group(1)
             longitude = coord.group(3)
@@ -313,8 +312,7 @@ def click_more_buttons(driver):
             if button.text == "全文":# Check if the button text is "More"
                 more_buttons += 1
                 button.click()
-            print(more_buttons)#this will tell us how many more buttons are currently loaded
-            print(body.text)
+            # print(more_buttons)#this will tell us how many more buttons are currently loaded
 
 def find_attribute_or_text(driver, by_method, selector, attribute=None):
     try:
