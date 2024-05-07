@@ -164,7 +164,7 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
             homeCoordinates: homeCoordinates,
             homeZoom: homeZoom,
             position: 'bottomright'
-        }),
+        })
     );
 
     // move zoom controller to bottomright
@@ -281,11 +281,10 @@ function displayUpdateRamenButton() {
     var button = L.DomUtil.create('button', 'btn btn-warning leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
     button.innerHTML = 'Update Ramen';
     button.title = 'Update Ramen';
-    
     // Set CSS style for button positioning
     button.style.position = 'absolute';
     button.style.top = '10px';
-    button.style.left = '50%';
+    button.style.left = '65%';
     button.style.zIndex = 1000;
 
     // Add the button to the map
@@ -632,3 +631,107 @@ offcanvasElements.forEach(function(offcanvas) {
         }
     });
 });
+
+// Search functions
+function performSearch() {
+    var inputValue = document.getElementById('searchInput').value;
+    var resultsList = document.getElementById('resultsList');
+
+    if (inputValue.length > 1) {
+        fetch(`/search/api/v1.0/name/autocomplete?query=${encodeURIComponent(inputValue)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!resultsList) {
+                    resultsList = document.createElement('ul');
+                    resultsList.id = 'resultsList';
+                    document.getElementById('searchContainer').appendChild(resultsList);
+                }
+                resultsList.innerHTML = '';
+                resultsList.style.display = 'block';
+
+                data.forEach(item => {
+                    var li = document.createElement('li');
+                    
+                    // Create and append the name element
+                    var nameSpan = document.createElement('span');
+                    nameSpan.textContent = item.name;
+                    nameSpan.className = 'ramen-name';
+                    li.appendChild(nameSpan);
+
+                    // Create and append the address element
+                    var addressSpan = document.createElement('span');
+                    addressSpan.textContent = item.address;
+                    addressSpan.className = 'ramen-address';
+                    li.appendChild(addressSpan);
+
+                    // Set the place_id as an attribute and add click event
+                    li.setAttribute('data-place-id', item.place_id);
+                    li.addEventListener('click', function() {
+                        let place_id = this.getAttribute('data-place-id');
+                        console.log(place_id);
+                        searchRamen(place_id);
+                    });
+
+                    resultsList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    } else {
+        alert('請輸入至少兩個字');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    var resultsList = document.getElementById('resultsList');
+    if (resultsList && event.target !== document.getElementById('searchInput')) {
+        // Check if the click is outside of resultsList
+        if (!resultsList.contains(event.target)) {
+            resultsList.style.display = 'none';
+        }
+    }
+});
+
+function searchRamen(place_id){
+    if (map) {
+        if (!ramenLayer) {
+            ramenLayer = L.layerGroup().addTo(map);
+        }
+
+        fetch(`/ramen/api/v1.0/restaurants/searchone?place_id=${place_id}`)
+            .then(response => response.json())
+            .then(ramen_geojson => {
+                var geoJSONLayer = L.geoJSON(ramen_geojson, {
+                    onEachFeature: function (feature, layer) {
+                        var popupContent = createPopupContent(feature);
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(ramenLayer);
+
+                map.fitBounds(geoJSONLayer.getBounds());
+
+                if (ramen_geojson.features.length > 0) {
+                    var firstFeatureLayer = geoJSONLayer.getLayers()[0]; // Gets the first layer in the GeoJSON layer
+                    firstFeatureLayer.openPopup(); // Open the popup
+                }
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    };
+};
+
+function createPopupContent(feature) {
+    return feature.properties.name +
+        '<br>' + feature.properties.weekday + feature.properties.open +
+        '<br>評分: ' + feature.properties.overall + ' / 5'+
+        '<br>' + feature.properties.address + '<br>' + 
+        '<button class="find-parking btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
+            ' ' + 'lat=' + feature.geometry.coordinates[1] +
+            '>附近停車位</button>' + '<br>' +
+        '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
+            ' ' + 'lat=' + feature.geometry.coordinates[1] + ' type="button" data-bs-toggle="offcanvas" ' +
+            'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
+            '拉麵突進導航</button>' + '<br>' +
+        '<button id=' + feature.properties.id + ' ' +
+            'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
+            'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
+            '詳細資訊與現場情報</button>';
+}

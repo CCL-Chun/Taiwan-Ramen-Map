@@ -14,6 +14,11 @@
 <body>
     <div id="map"></div>
 
+    <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="Search...">
+        <button class="search" onclick="performSearch()">Search</button>
+    </div>
+    
     <div class="offcanvas offcanvas-start" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
         <div class="offcanvas-header">
             <img class="ramen-image" alt="Base64 Image">
@@ -48,7 +53,7 @@
 
     <div class="offcanvas offcanvas-start" tabindex="-1" data-bs-backdrop="false" id="instructions-wrapper" data-bs-scroll="true" aria-labelledby="instructions-wrapperLabel" style="z-index: 1045; visibility: hidden;">
         <div class="offcanvas-header">
-            <h5 id="offcanvasBottomLabel">Instructions</h5>
+            <h5 id="offcanvasBottomLabel">路徑提示</h5>
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
