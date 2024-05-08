@@ -53,7 +53,7 @@ $(document).ready(function() {
     function fetchGeolocation() {
         var options = {
             enableHighAccuracy: true,
-            timeout: 3000,
+            timeout: 1000,
             maximumAge: 0
         };
 
@@ -371,6 +371,7 @@ function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     fetch(`/traffic/api/v1.0/routes/combined?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
+            console.log(data);
             addAllRoutesToMap(data); // add polyline to the map without highlighting
             displaySegmentedNavigationInstructions(data); // display segmented instructions
         })
@@ -411,6 +412,19 @@ function displaySegmentedNavigationInstructions(routeData) {
     mainSteps.forEach((step, index) => {
         var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
         var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
+        // add icon based on travelMode
+        var iconClass = '';
+        if (step.travelMode === 'WALK') {
+            iconClass = 'bi bi-person-walking';
+        } else if (step.travelMode === 'TRANSIT') {
+            iconClass = 'bi bi-bus-front-fill';
+        } else if (step.travelMode === 'YouBike2') {
+            iconClass = 'bi bi-walk';
+        }
+
+        var icon = $('<i class="' + iconClass + '"></i>');
+        instruction.prepend(icon); // prepend the icon before the instruction text
+
         mainInstructionsContainer.append(instruction);
 
         instruction.on('click', function() {
