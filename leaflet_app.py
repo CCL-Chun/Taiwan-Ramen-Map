@@ -11,8 +11,10 @@ import json
 import os
 
 ## write to log
-logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
-    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
+#logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
+#    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
+logging.basicConfig(level=logging.WARN,filename='log/ramen_map_log',filemode='a',
+    format='%(asctime)s %(levelname)s:%(message)s')
 ## load env variables
 load_dotenv()
 
@@ -145,7 +147,7 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
 
 def check_and_log_missing_data(ramen, field):
     if field not in ramen or not ramen[field]:
-        logging.exception(f"Missing {field} for {ramen.get('_id', '待補')}\t{ramen.get('name', '待補')}")
+        logging.debug(f"Missing {field} for {ramen.get('_id', '待補')}\t{ramen.get('name', '待補')}")
         return True
     return False
 
