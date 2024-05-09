@@ -10,30 +10,6 @@ let defaultLng;
 let lastMoveLatLng;
 let socket;
 
-let HomeControl = L.Control.extend({
-    options: {
-        position: 'topleft'
-    },
-
-    onAdd: function (map) {
-        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-
-        // Create a button element
-        var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
-        button.title = 'Go to Home';
-
-        // Add class for the icon
-        L.DomUtil.addClass(button, 'home-icon');
-
-        // Add a click event listener to the button
-        L.DomEvent.on(button, 'click', function (e) {
-            map.setView(this.options.homeCoordinates, this.options.homeZoom);
-        }, this);
-
-        return container;
-    }
-});
-
 // initialize the map
 $(document).ready(function() {
     // default to 中山 if no geolocation
@@ -155,6 +131,31 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
     startMarker.openPopup();
+
+    let HomeControl = L.Control.extend({
+        options: {
+            position: 'topleft'
+        },
+    
+        onAdd: function (map) {
+            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    
+            // Create a button element
+            var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
+            button.title = '回到現在位置';
+    
+            // Add class for the icon
+            L.DomUtil.addClass(button, 'home-icon');
+    
+            // Add a click event listener to the button
+            L.DomEvent.on(button, 'click', function (e) {
+                map.setView(this.options.homeCoordinates, this.options.homeZoom);
+                startMarker.openPopup();
+            }, this);
+    
+            return container;
+        }
+    });
 
     // create a home button
     let homeCoordinates = [lat, lng];
@@ -336,14 +337,25 @@ function findParking(lat,lng){
                 },
                 onEachFeature: function (feature, layer) {
                     if (feature.properties.gatename) {
-                        var popupContent = feature.properties.gatename +
-                        '<br>' + feature.properties.opentime +
-                        '<br>' + feature.properties.parknum +
-                        '<br>' + feature.properties.feeb +
-                        '<br>' + feature.properties.gadetype1
+                        var popupContent = feature.properties.gatename + '<br>';
+                        
+                        if (feature.properties.opentime) {
+                            popupContent += feature.properties.opentime + '<br>';
+                        }
+                    
+                        if (feature.properties.parknum) {
+                            popupContent += feature.properties.parknum + '<br>';
+                        }
+                    
+                        if (feature.properties.feeb) {
+                            popupContent += feature.properties.feeb + '<br>';
+                        }
+                    
+                        if (feature.properties.gadetype1) {
+                            popupContent += feature.properties.gadetype1;
+                        }
                     } else{
-                        var popupContent = '路邊:' + roadParkType[feature.properties.pktype] +
-                        '<br>' + feature.properties.pknos
+                        var popupContent = '路邊:' + roadParkType[feature.properties.pktype]
                     }
                     layer.bindPopup(popupContent);
                 }
@@ -419,7 +431,7 @@ function displaySegmentedNavigationInstructions(routeData) {
         } else if (step.travelMode === 'TRANSIT') {
             iconClass = 'bi bi-bus-front-fill';
         } else if (step.travelMode === 'YouBike2') {
-            iconClass = 'bi bi-walk';
+            iconClass = 'bi bi-bicycle';
         }
 
         var icon = $('<i class="' + iconClass + '"></i>');
@@ -438,8 +450,21 @@ function displaySegmentedNavigationInstructions(routeData) {
         console.log("YouBike route get!")
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
         youbikeSteps.forEach((step, index) => {
-            var instructionText = step.navigationInstruction.instructions;
+            var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
             var instruction = $('<div class="instruction youbike" data-step-index="' + index + '">' + instructionText + '</div>');
+            // add icon based on travelMode
+            var iconClass = '';
+            if (step.travelMode === 'WALK') {
+                iconClass = 'bi bi-person-walking';
+            } else if (step.travelMode === 'TRANSIT') {
+                iconClass = 'bi bi-bus-front-fill';
+            } else if (step.travelMode === 'YouBike2') {
+                iconClass = 'bi bi-bicycle';
+            }
+
+            var icon = $('<i class="' + iconClass + '"></i>');
+            instruction.prepend(icon); // prepend the icon before the instruction text
+
             youbikeInstructionsContainer.append(instruction);
 
             instruction.on('click', function() {
@@ -502,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const ramenFeaturesContainer = document.querySelector('.offcanvas-body .ramen-features');
                     ramenFeaturesContainer.innerHTML = '';
                     for (const features of ramen_details.features) {
-                        ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>`;
+                        ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>&ensp;`;
                     };
 
                     // rating
@@ -542,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const recommendContainer = document.querySelector('.offcanvas-body .ramen-recommend');
                     recommendContainer.innerHTML = '';
                     for (const recommend of ramen_details.similar) {
-                        recommendContainer.innerHTML += `<span class="badge bg-secondary text-light">${recommend}</span>`;
+                        recommendContainer.innerHTML += `<span class="badge bg-secondary text-light">${recommend}</span>&ensp;`;
                     };
 
                 });

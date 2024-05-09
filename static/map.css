@@ -32,11 +32,6 @@
     background-color: #e5e5e5;
 }
 
-/* Style for YouBike instructions */
-.youbike {
-    color: #FF5733; /* Change color for YouBike instructions */
-}
-
 /* Make image of ramen in constant size */
 .ramen-image {
     width: 200px;
