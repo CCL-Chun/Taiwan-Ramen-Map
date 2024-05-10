@@ -10,30 +10,6 @@ let defaultLng;
 let lastMoveLatLng;
 let socket;
 
-let HomeControl = L.Control.extend({
-    options: {
-        position: 'topleft'
-    },
-
-    onAdd: function (map) {
-        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-
-        // Create a button element
-        var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
-        button.title = 'Go to Home';
-
-        // Add class for the icon
-        L.DomUtil.addClass(button, 'home-icon');
-
-        // Add a click event listener to the button
-        L.DomEvent.on(button, 'click', function (e) {
-            map.setView(this.options.homeCoordinates, this.options.homeZoom);
-        }, this);
-
-        return container;
-    }
-});
-
 // initialize the map
 $(document).ready(function() {
     // default to 中山 if no geolocation
@@ -53,7 +29,7 @@ $(document).ready(function() {
     function fetchGeolocation() {
         var options = {
             enableHighAccuracy: true,
-            timeout: 3000,
+            timeout: 1000,
             maximumAge: 0
         };
 
@@ -156,6 +132,31 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     L.control.layers(baseMaps, overlayMaps).addTo(map);
     startMarker.openPopup();
 
+    let HomeControl = L.Control.extend({
+        options: {
+            position: 'topleft'
+        },
+    
+        onAdd: function (map) {
+            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    
+            // Create a button element
+            var button = L.DomUtil.create('a', 'leaflet-control-home leaflet-bar-part leaflet-bar-part-single', container);
+            button.title = '回到現在位置';
+    
+            // Add class for the icon
+            L.DomUtil.addClass(button, 'home-icon');
+    
+            // Add a click event listener to the button
+            L.DomEvent.on(button, 'click', function (e) {
+                map.setView(this.options.homeCoordinates, this.options.homeZoom);
+                startMarker.openPopup();
+            }, this);
+    
+            return container;
+        }
+    });
+
     // create a home button
     let homeCoordinates = [lat, lng];
     let homeZoom = 16;
@@ -164,7 +165,7 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
             homeCoordinates: homeCoordinates,
             homeZoom: homeZoom,
             position: 'bottomright'
-        }),
+        })
     );
 
     // move zoom controller to bottomright
@@ -281,11 +282,10 @@ function displayUpdateRamenButton() {
     var button = L.DomUtil.create('button', 'btn btn-warning leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
     button.innerHTML = 'Update Ramen';
     button.title = 'Update Ramen';
-    
     // Set CSS style for button positioning
     button.style.position = 'absolute';
     button.style.top = '10px';
-    button.style.left = '50%';
+    button.style.left = '65%';
     button.style.zIndex = 1000;
 
     // Add the button to the map
@@ -337,14 +337,25 @@ function findParking(lat,lng){
                 },
                 onEachFeature: function (feature, layer) {
                     if (feature.properties.gatename) {
-                        var popupContent = feature.properties.gatename +
-                        '<br>' + feature.properties.opentime +
-                        '<br>' + feature.properties.parknum +
-                        '<br>' + feature.properties.feeb +
-                        '<br>' + feature.properties.gadetype1
+                        var popupContent = feature.properties.gatename + '<br>';
+                        
+                        if (feature.properties.opentime) {
+                            popupContent += feature.properties.opentime + '<br>';
+                        }
+                    
+                        if (feature.properties.parknum) {
+                            popupContent += feature.properties.parknum + '<br>';
+                        }
+                    
+                        if (feature.properties.feeb) {
+                            popupContent += feature.properties.feeb + '<br>';
+                        }
+                    
+                        if (feature.properties.gadetype1) {
+                            popupContent += feature.properties.gadetype1;
+                        }
                     } else{
-                        var popupContent = '路邊:' + roadParkType[feature.properties.pktype] +
-                        '<br>' + feature.properties.pknos
+                        var popupContent = '路邊:' + roadParkType[feature.properties.pktype]
                     }
                     layer.bindPopup(popupContent);
                 }
@@ -372,6 +383,7 @@ function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     fetch(`/traffic/api/v1.0/routes/combined?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
+            console.log(data);
             addAllRoutesToMap(data); // add polyline to the map without highlighting
             displaySegmentedNavigationInstructions(data); // display segmented instructions
         })
@@ -412,6 +424,19 @@ function displaySegmentedNavigationInstructions(routeData) {
     mainSteps.forEach((step, index) => {
         var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
         var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
+        // add icon based on travelMode
+        var iconClass = '';
+        if (step.travelMode === 'WALK') {
+            iconClass = 'bi bi-person-walking';
+        } else if (step.travelMode === 'TRANSIT') {
+            iconClass = 'bi bi-bus-front-fill';
+        } else if (step.travelMode === 'YouBike2') {
+            iconClass = 'bi bi-bicycle';
+        }
+
+        var icon = $('<i class="' + iconClass + '"></i>');
+        instruction.prepend(icon); // prepend the icon before the instruction text
+
         mainInstructionsContainer.append(instruction);
 
         instruction.on('click', function() {
@@ -425,8 +450,21 @@ function displaySegmentedNavigationInstructions(routeData) {
         console.log("YouBike route get!")
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
         youbikeSteps.forEach((step, index) => {
-            var instructionText = step.navigationInstruction.instructions;
+            var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
             var instruction = $('<div class="instruction youbike" data-step-index="' + index + '">' + instructionText + '</div>');
+            // add icon based on travelMode
+            var iconClass = '';
+            if (step.travelMode === 'WALK') {
+                iconClass = 'bi bi-person-walking';
+            } else if (step.travelMode === 'TRANSIT') {
+                iconClass = 'bi bi-bus-front-fill';
+            } else if (step.travelMode === 'YouBike2') {
+                iconClass = 'bi bi-bicycle';
+            }
+
+            var icon = $('<i class="' + iconClass + '"></i>');
+            instruction.prepend(icon); // prepend the icon before the instruction text
+
             youbikeInstructionsContainer.append(instruction);
 
             instruction.on('click', function() {
@@ -489,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const ramenFeaturesContainer = document.querySelector('.offcanvas-body .ramen-features');
                     ramenFeaturesContainer.innerHTML = '';
                     for (const features of ramen_details.features) {
-                        ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>`;
+                        ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>&ensp;`;
                     };
 
                     // rating
@@ -529,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const recommendContainer = document.querySelector('.offcanvas-body .ramen-recommend');
                     recommendContainer.innerHTML = '';
                     for (const recommend of ramen_details.similar) {
-                        recommendContainer.innerHTML += `<span class="badge bg-secondary text-light">${recommend}</span>`;
+                        recommendContainer.innerHTML += `<span class="badge bg-secondary text-light">${recommend}</span>&ensp;`;
                     };
 
                 });
@@ -632,3 +670,107 @@ offcanvasElements.forEach(function(offcanvas) {
         }
     });
 });
+
+// Search functions
+function performSearch() {
+    var inputValue = document.getElementById('searchInput').value;
+    var resultsList = document.getElementById('resultsList');
+
+    if (inputValue.length > 1) {
+        fetch(`/search/api/v1.0/name/autocomplete?query=${encodeURIComponent(inputValue)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!resultsList) {
+                    resultsList = document.createElement('ul');
+                    resultsList.id = 'resultsList';
+                    document.getElementById('searchContainer').appendChild(resultsList);
+                }
+                resultsList.innerHTML = '';
+                resultsList.style.display = 'block';
+
+                data.forEach(item => {
+                    var li = document.createElement('li');
+                    
+                    // Create and append the name element
+                    var nameSpan = document.createElement('span');
+                    nameSpan.textContent = item.name;
+                    nameSpan.className = 'ramen-name';
+                    li.appendChild(nameSpan);
+
+                    // Create and append the address element
+                    var addressSpan = document.createElement('span');
+                    addressSpan.textContent = item.address;
+                    addressSpan.className = 'ramen-address';
+                    li.appendChild(addressSpan);
+
+                    // Set the place_id as an attribute and add click event
+                    li.setAttribute('data-place-id', item.place_id);
+                    li.addEventListener('click', function() {
+                        let place_id = this.getAttribute('data-place-id');
+                        console.log(place_id);
+                        searchRamen(place_id);
+                    });
+
+                    resultsList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    } else {
+        alert('請輸入至少兩個字');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    var resultsList = document.getElementById('resultsList');
+    if (resultsList && event.target !== document.getElementById('searchInput')) {
+        // Check if the click is outside of resultsList
+        if (!resultsList.contains(event.target)) {
+            resultsList.style.display = 'none';
+        }
+    }
+});
+
+function searchRamen(place_id){
+    if (map) {
+        if (!ramenLayer) {
+            ramenLayer = L.layerGroup().addTo(map);
+        }
+
+        fetch(`/ramen/api/v1.0/restaurants/searchone?place_id=${place_id}`)
+            .then(response => response.json())
+            .then(ramen_geojson => {
+                var geoJSONLayer = L.geoJSON(ramen_geojson, {
+                    onEachFeature: function (feature, layer) {
+                        var popupContent = createPopupContent(feature);
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(ramenLayer);
+
+                map.fitBounds(geoJSONLayer.getBounds());
+
+                if (ramen_geojson.features.length > 0) {
+                    var firstFeatureLayer = geoJSONLayer.getLayers()[0]; // Gets the first layer in the GeoJSON layer
+                    firstFeatureLayer.openPopup(); // Open the popup
+                }
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    };
+};
+
+function createPopupContent(feature) {
+    return feature.properties.name +
+        '<br>' + feature.properties.weekday + feature.properties.open +
+        '<br>評分: ' + feature.properties.overall + ' / 5'+
+        '<br>' + feature.properties.address + '<br>' + 
+        '<button class="find-parking btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
+            ' ' + 'lat=' + feature.geometry.coordinates[1] +
+            '>附近停車位</button>' + '<br>' +
+        '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
+            ' ' + 'lat=' + feature.geometry.coordinates[1] + ' type="button" data-bs-toggle="offcanvas" ' +
+            'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
+            '拉麵突進導航</button>' + '<br>' +
+        '<button id=' + feature.properties.id + ' ' +
+            'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
+            'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
+            '詳細資訊與現場情報</button>';
+}

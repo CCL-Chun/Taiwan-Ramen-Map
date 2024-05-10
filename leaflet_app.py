@@ -1,20 +1,58 @@
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+from Database import MongoDBConnection
 from datetime import datetime
 import requests
 import logging
+import redis
 import pytz
 import json
 import os
 
 ## write to log
-logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
-    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
-
+#logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
+#    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
+logging.basicConfig(level=logging.WARN,filename='log/ramen_map_log',filemode='a',
+    format='%(asctime)s %(levelname)s:%(message)s')
+## load env variables
 load_dotenv()
+
+## connect to cloud MongoDB
+try:
+    connection = MongoDBConnection()
+    collection_ramen = connection.get_collection('ramen_info')
+    collection_parking = connection.get_collection('parking_info')
+    collection_youbike = connection.get_collection('youbike_info')
+except Exception as e:
+    logging.error(f"Cannot connect to MongoDB!{e}")
+
+## connect to redis
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+# fetch ramen names and place_id
+ramen_names = list(collection_ramen.find({
+        "name": {"$exists": "true"}, "place_id": {"$exists": "true"}, "address": {"$exists": "true"}
+    }, {
+        "_id": 0, "name": 1, "place_id": 1, "address": 1
+    })
+)
+# Ensure the old index deleted if it exists
+try:
+    redis_client.execute_command('FT.DROPINDEX', 'ramen_names_idx', 'IF EXISTS')
+except Exception as e:
+    print("Failed to drop index:", e)
+# Create a RediSearch index on the 'name' field
+redis_client.execute_command('FT.CREATE', 'ramen_names_idx', 'ON', 'HASH', 'PREFIX', 1, 'ramen:', 
+                            'SCHEMA', 'name', 'TEXT', 'place_id', 'TEXT', 'address', 'TEXT')
+for item in ramen_names:
+    key = f"ramen:{item['name']}"
+    redis_client.hset(key, mapping={
+        'name': item['name'], 
+        'place_id': item['place_id'],
+        'address': item['address']
+    })
+
+## weekday determination
 timezone = pytz.timezone('Asia/Taipei')
 weekDaysMapping = ("星期一", "星期二",
                    "星期三", "星期四",
@@ -23,23 +61,6 @@ weekDaysMapping = ("星期一", "星期二",
 def weekday():
     # will return 0 when Monday
     return datetime.weekday(datetime.now(pytz.utc).astimezone(timezone))
-
-
-## connect to cloud MongoDB
-try:
-    username = os.getenv("MongoDB_user")
-    password = os.getenv("MongoDB_password")
-    cluster_url = os.getenv("MongoDB_cluster_url")
-    uri = f"mongodb+srv://{username}:{password}@{cluster_url}?retryWrites=true&w=majority&appName=ramen-taiwan"
-    client = MongoClient(uri, server_api=ServerApi('1')) # Create a new client and connect to the server
-    db = client['ramen-taiwan']
-    collection_ramen = db['ramen_info']
-    collection_parking = db['parking_info']
-    collection_youbike = db['youbike_info']
-
-except Exception as e:
-    logging.error(f"Cannot connect to MongoDB!{e}")
-
 
 ## function for finding nearest YouBike station
 def find_youbike(lat,lng):
@@ -126,17 +147,13 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
 
 def check_and_log_missing_data(ramen, field):
     if field not in ramen or not ramen[field]:
-        logging.exception(f"Missing {field} for {ramen.get('_id', '待補')}\t{ramen.get('name', '待補')}")
+        logging.debug(f"Missing {field} for {ramen.get('_id', '待補')}\t{ramen.get('name', '待補')}")
         return True
     return False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
-
-@app.route("/details")
-def show_detail_page():
-    return render_template(".html")
 
 @app.route("/")
 def first_view():
@@ -172,9 +189,7 @@ def get_ramens():
             "overall": ramen["overall_rating"]["mean"],
             "id": ramen.get("place_id",ramen.get("name","待補"))
         }
-    } for ramen in ramen_data if not any(check_and_log_missing_data(ramen, key) for key in ["address", "open_time", "overall_rating", "features", "place_id"])]
-
-    print(len(ramen_data))
+    } for ramen in ramen_data if not any(check_and_log_missing_data(ramen, key) for key in ["address", "open_time", "overall_rating"])]
 
     return jsonify(ramen_geojson)
 
@@ -404,6 +419,50 @@ def on_leave(data):
     #     'romm_id': f'room id: {room_id}'
     # }, room=room_id)
 
+@app.route("/search/api/v1.0/name/autocomplete", methods=['GET'])
+def autocomplete():
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify([])
+
+    # Use RediSearch to perform a text search
+    results = redis_client.execute_command('FT.SEARCH', 'ramen_names_idx', f'@name:*{query}*', 'LIMIT', 0, 10)
+    if results[0] > 0:  # results[0] contains the number of search results
+        # Parse results into dictionaries
+        parsed_results = []
+        for index in range(1, len(results), 2):  # Skip the count and iterate over results
+            fields = results[index + 1]
+            it = iter(fields)
+            dict_result = dict(zip(it, it))  # Create a dictionary from the list of fields
+            dict_result = {k.decode('utf-8'): v.decode('utf-8') for k, v in dict_result.items()}  # Decode bytes to string
+            parsed_results.append(dict_result)
+        return jsonify(parsed_results)
+    else:
+        return jsonify([])  # Return an empty list if no results found
+
+@app.route("/ramen/api/v1.0/restaurants/searchone", methods=["GET"])
+def search_ramen():
+    place_id = request.args.get('place_id')
+    # find ramen records
+    ramen_search = collection_ramen.find_one({"place_id": place_id})
+
+    # put data into features list
+    ramen_geojson = {}
+    ramen_geojson["features"] = [{
+        "type": "Feature",
+        "geometry": ramen_search["location"],
+        "properties":
+        {
+            "name": ramen_search.get("name","待補"),
+            "address": ramen_search.get("address","暫無"),
+            "weekday": weekDaysMapping[weekday()],
+            "open": ramen_search["open_time"][weekDaysMapping[weekday()]] if ramen_search["open_time"] else "不定",
+            "overall": ramen_search["overall_rating"]["mean"],
+            "id": ramen_search.get("place_id",ramen_search.get("name","待補"))
+        }
+    }]
+
+    return jsonify(ramen_geojson), 200
 
 
 if __name__ == "__main__":
