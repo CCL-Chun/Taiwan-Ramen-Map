@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, make_response
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 from Database import MongoDBConnection
@@ -11,7 +11,7 @@ import json
 import os
 
 ## write to log
-#logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
+# logging.basicConfig(level=logging.INFO,filename='log_map.txt',filemode='a',
 #    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 logging.basicConfig(level=logging.WARN,filename='log/ramen_map_log',filemode='a',
     format='%(asctime)s %(levelname)s:%(message)s')
@@ -80,7 +80,7 @@ def find_youbike(lat,lng):
         nearest = near_youbike[0]
         return nearest
     else:
-        return Exception("Find no YouBike stations")
+        raise Exception(f"Find no YouBike stations around {lat},{lng}")
 
 ## function for planning YouBike routes
 def route_youbike(start_lat,start_lng,end_lat,end_lng):
@@ -93,8 +93,9 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
         start_bike_station = find_youbike(float(start_lat),float(start_lng))
         end_bike_station = find_youbike(float(end_lat),float(end_lng))
     except Exception as e:
-        return f"{e} Use origin plan.",403
-
+        logging.info(f"{e} Use origin plan.")
+        return make_response(jsonify({"error": f"{e} Use origin plan."}), 403)
+        
     url = "https://routes.googleapis.com/directions/v2:computeRoutes"
     headers = {
         'Content-Type': 'application/json',
@@ -215,7 +216,7 @@ def ramen_details():
     
         return jsonify(details_dict), 200
     else:
-        return jsonify(f"place id {place_id} not found"), 403
+        return jsonify(f"place id {place_id} not found"), 404
 
 
 @app.route("/traffic/api/v1.0/parking", methods=["GET"])
@@ -301,7 +302,7 @@ def route_plan():
         if response.status_code == 200:
             result = response.json()
         else:
-            raise Exception(f"{response.text}")
+            raise Exception(f"Google API error: {response.text}")
 
         # decide making another YouBike request or not
         time = []
@@ -331,29 +332,29 @@ def route_plan():
                 if Bike_response.status_code == 200:
                     Bike = Bike_response.json()
                     youbike_route = Bike['routes'][0]['legs']
-            except Exception as e:
-                raise Exception(f"Error fetching route_youbike: {e}")
             
-            print(f"length of youbike_route: {len(youbike_route)}")
-            if len(youbike_route) == 3:
-                # WALK from bus stop to YouBike
-                for step in youbike_route[0]['steps']:
-                    bike_route.append(step)
-                ## YouBike route
-                for step in youbike_route[1]['steps']:
-                    step['travelMode']= 'YouBike2'
-                    bike_route.append(step)
-                # WALK from YouBike to ramen
-                for step in youbike_route[2]['steps']:
-                    bike_route.append(step)
-            else:
-                raise Exception(f"Total {len(youbike_route)} steps for 4 waypoints!")
-        # print(bike_route)
-        
+                    if len(youbike_route) == 3:
+                        # WALK from bus stop to YouBike
+                        for step in youbike_route[0]['steps']:
+                            bike_route.append(step)
+                        ## YouBike route
+                        for step in youbike_route[1]['steps']:
+                            step['travelMode']= 'YouBike2'
+                            bike_route.append(step)
+                        # WALK from YouBike to ramen
+                        for step in youbike_route[2]['steps']:
+                            bike_route.appsend(step)
+                    else:
+                        # logging.debug(bike_route)
+                        raise Exception(f"Total {len(youbike_route)} steps for 4 waypoints!")
+            except Exception as e:
+                raise Exception(f"Cannot fetching route_youbike: {e}")
+
         if bike_route:
             try:
                 combined_route = fastest_route[0]['steps'][:change_index+1]
             except Exception as e:
+                logging.WARN(f"Wrong in combined_route: {start_lat},{start_lng},{end_lat},{end_lng}: {e}")
                 raise Exception(f"Wrong in combined_route: {e}")
             try:
                 ## append improved route into legs
@@ -362,12 +363,11 @@ def route_plan():
                     {'steps' : combined_route+bike_route}
                 ])
             except Exception as e:
-                raise Exception(f"Wrong in result: {e}")
+                logging.WARN(f"append improved route: {start_lat},{start_lng},{end_lat},{end_lng}: {e}")
+                raise Exception(f"append improved route: {e}")
 
     except Exception as e:
-        logging.error(f"Wrong in google route API: {e}")
-        print(e)
-        return jsonify(result)
+        logging.info(f"Wrong in google route API: {e}")
     
     # add prompt for front-end to quick indexing
     result['prompt'] = [{
@@ -375,7 +375,7 @@ def route_plan():
         'youbike_improve' : 1 if bike_route else 0
     }]
 
-    return jsonify(result)
+    return jsonify(result), 200
     
 # Handle the connection
 @socketio.on('connect')
