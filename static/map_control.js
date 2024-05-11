@@ -8,6 +8,7 @@ let layerControl;
 let defaultLat;
 let defaultLng;
 let lastMoveLatLng;
+let newLatLng;
 let socket;
 
 // initialize the map
@@ -81,14 +82,6 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
         });
-
-    // let Stadia_OSMBright = L.tileLayer(
-    //     'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.{ext}', {
-    //         minZoom: 0,
-    //         maxZoom: 20,
-    //         attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    //         ext: 'png'
-    //     });
 
     let osmBike = L.tileLayer(
         'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
@@ -178,60 +171,46 @@ function firstView(){
 }
 
 function setupEventListeners() {
-    $('#navigation-button').on('click', function() {
-        console.log("start fetching traffic")
-        fetch('/traffic/api/test')
-        .then(response => response.json())
-        .then(data => {
-            addAllRoutesToMap(data); // add polyline to the map without highlighting
-            displaySegmentedNavigationInstructions(data); // display segmented instructions
-        })
-        .catch(error => console.error('Error fetching routes:', error));
-    });
-
     // search for parking lots around ramen
-    map.on('popupopen', function() {
-        // use the map container to handle click event
-        var popupContainer = map.getPane('popupPane');
+    // use the map container to handle click event
+    var popupContainer = map.getPane('popupPane');
 
-        popupContainer.addEventListener('click', function(event) {
-            // #find-parking only
-            if (event.target.classList.contains('find-parking')) {
-                // retrieve the coordinates from attributes
-                var lng = event.target.getAttribute('lng');
-                var lat = event.target.getAttribute('lat');
-                console.log('Finding parking lots around:', lat, lng);
-                // fetch from flask api and show on map layer
-                findParking(lat, lng);
-            }
+    popupContainer.addEventListener('click', function(event) {
+        // #find-parking only
+        if (event.target.classList.contains('find-parking')) {
+            // retrieve the coordinates from attributes
+            var lng = event.target.getAttribute('lng');
+            var lat = event.target.getAttribute('lat');
+            console.log('Finding parking lots around:', lat, lng);
+            // fetch from flask api and show on map layer
+            findParking(lat, lng);
+        }
 
-            // #bring-me-here only
-            if (event.target.classList.contains('bring-me-here')) {
-                // retrieve the coordinates from attributes
-                var endLng = event.target.getAttribute('lng');
-                var endLat = event.target.getAttribute('lat');
-                console.log('Planning the routes to:', endLat, endLng);
-                // fetch from flask api and show on map layer
-                fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng);
-            }
-        });
+        // #bring-me-here only
+        if (event.target.classList.contains('bring-me-here')) {
+            // retrieve the coordinates from attributes
+            var endLng = event.target.getAttribute('lng');
+            var endLat = event.target.getAttribute('lat');
+            console.log('Planning the routes to:', endLat, endLng);
+            // fetch from flask api and show on map layer
+            fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng);
+        }
     });
 
+    lastMoveLatLng = L.latLng(defaultLat, defaultLng);
     // show the update button
     map.on('moveend', function() {
-        var newLatLng = map.getCenter();
+        newLatLng = map.getCenter();
+        
         if (lastMoveLatLng) {
             var distance = lastMoveLatLng.distanceTo(newLatLng);
             // Convert distance to kilometers
             var distanceInKm = distance / 1000;
-            if (distanceInKm > 1) {
+            if (distanceInKm > 3) {
                 displayUpdateRamenButton();
+                lastMoveLatLng = newLatLng;
             }
         }
-        else{
-            lastMoveLatLng = [defaultLat, defaultLng];
-        };
-        lastMoveLatLng = newLatLng;
     });
 }
 
@@ -278,6 +257,10 @@ function updateRamen(){
 
 // button for update ramen
 function displayUpdateRamenButton() {
+    // do noting when a update button is already there
+    if (document.querySelector('.leaflet-control-update-ramen')) {
+        return;
+    };
     // Create a button element
     var button = L.DomUtil.create('button', 'btn btn-warning leaflet-control-update-ramen leaflet-bar-part leaflet-bar-part-single');
     button.innerHTML = 'Update Ramen';
@@ -297,6 +280,8 @@ function displayUpdateRamenButton() {
         updateRamen();
         // Remove the button from the map
         map.getContainer().removeChild(button);
+        // renew lastMoveLatLng
+        lastMoveLatLng = newLatLng;
     });
 }
 
