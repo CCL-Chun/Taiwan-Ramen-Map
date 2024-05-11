@@ -392,32 +392,44 @@ def handle_custom_connect_event(data):
 @socketio.on('client_event')
 def handle_client_event(data):
     room_id = data['id']
-    print(f'{datetime.now(pytz.utc).strftime("%Y/%m/%d %H:%M:%S")} Received data: {str(data)}')
+    message = str(data['data'])
+    timestamp = datetime.now(pytz.utc).strftime("%Y/%m/%d %H:%M:%S")
+
+    message_data = {
+        'message': message,
+        'timestamp': timestamp
+    }
+    message_json = json.dumps(message_data)
+
+    # Store message in Redis with expiration time (24 hours = 86400 seconds)
+    redis_key = f"messages_{room_id}_{timestamp}"
+    redis_client.setex(redis_key, 86400, message_json)
+
     emit('server_response', {
-        'message': str(data['data']),
-        'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
-        'romm_id': f'room id: {room_id}',
+        'message': message,
+        'time': timestamp
     }, room=room_id)
 
 @socketio.on('join_room')
 def on_join(data):
     room_id = data['id']
     join_room(room_id)
-    # emit('server_response', {
-    #     'message': 'Joined room',
-    #     'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
-    #     'romm_id': f'room id: {room_id}'
-    # }, room=room_id)
+
+    # Fetch all messages for this room from Redis
+    keys = redis_client.keys(f"messages_{room_id}_*")
+    messages = [json.loads(redis_client.get(k).decode('utf-8')) for k in keys]
+    
+    # Emit all previous messages to the client
+    for msg_data in messages:
+        emit('server_response', {
+            'message': msg_data['message'],
+            'time': msg_data['timestamp']
+        }, room=room_id)
 
 @socketio.on('leave_room')
 def on_leave(data):
     room_id = data['id']
     leave_room(room_id)
-    # emit('server_response', {
-    #     'message': 'Left room',
-    #     'time': datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S"),
-    #     'romm_id': f'room id: {room_id}'
-    # }, room=room_id)
 
 @app.route("/search/api/v1.0/name/autocomplete", methods=['GET'])
 def autocomplete():
