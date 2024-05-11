@@ -432,7 +432,7 @@ function displaySegmentedNavigationInstructions(routeData) {
 
     // display YouBike route instructions
     if (routeData.prompt[0].youbike_improve === 1) {
-        console.log("YouBike route get!")
+        // console.log("YouBike route get!")
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
         youbikeSteps.forEach((step, index) => {
             var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
@@ -457,6 +457,8 @@ function displaySegmentedNavigationInstructions(routeData) {
                 highlightStep(stepIndex, youbikeSteps);
             });
         });
+    } else {
+        document.getElementById('youbike-instructions-tab').setAttribute('class','nav-link disabled')
     }
 }
 
