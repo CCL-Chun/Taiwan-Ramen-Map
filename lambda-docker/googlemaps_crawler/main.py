@@ -41,10 +41,11 @@ def lambda_handler(event, context):
         name = message_body['name']
         maps_url = message_body['maps_url']
         alias = message_body['alias']
+        place_id = message_body['place_id']
 
         # Process the URL with Selenium
         try:
-            processed = scrape_with_selenium(name,maps_url,alias)
+            processed = scrape_with_selenium(name,maps_url,alias,place_id)
             result.append(processed)
         except Exception as e:
             error_message = f"Failed to process {name}: {str(e)}"
@@ -59,8 +60,8 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.error(f"Failed to upload results to S3: {str(e)}")
 
-    if errors:
-        upload_to_s3(errors, "ramen-selenium-results", f"errors_{local_time}.json")
+    # if errors:
+    #     upload_to_s3(errors, "ramen-selenium-results", f"errors_{local_time}.json")
 
     return {
         "statusCode": 200,
@@ -71,7 +72,7 @@ def lambda_handler(event, context):
     }
 
 
-def scrape_with_selenium(name,maps_url,alias):
+def scrape_with_selenium(name,maps_url,alias,place_id):
     # Set the options in the browser
     options = webdriver.ChromeOptions()
     service = webdriver.ChromeService("/opt/chromedriver")
@@ -236,7 +237,7 @@ def scrape_with_selenium(name,maps_url,alias):
                 try:
                     results = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "jftiEf")))
                 except Exception as e:
-                    logger.info(f"{title} has no more reviews2!")
+                    logger.info(f"{title} has no more reviews2!Need to check!")
                     break_condition = True
 
                 temp = results[-1]
@@ -278,7 +279,8 @@ def scrape_with_selenium(name,maps_url,alias):
         "address":address,
         "latitude":latitude,
         "longitude":longitude,
-        "reviews":reviews
+        "reviews":reviews,
+        "place_id":place_id
     }
 
     return crawling_result
