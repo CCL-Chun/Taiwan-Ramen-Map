@@ -32,9 +32,34 @@
     background-color: #e5e5e5;
 }
 
+/* offcanvas header */
+.offcanvas-header {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+}
+
+.offcanvas-title {
+    flex: 0 0 60%;
+    padding-right: 10px; 
+}
+
+.ramen-features {
+    flex: 0 0 40%;
+}
+
+.btn-close {
+    margin-left: auto;
+}
+
+.badge {
+    margin-right: 3px; 
+    margin-bottom: 2px; 
+}
+
 /* Make image of ramen in constant size */
 .ramen-image {
-    width: 200px;
+    width: 100%;
     height: auto; /* Maintain aspect ratio */
 }
 

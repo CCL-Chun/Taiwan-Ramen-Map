@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(ramen_details => {
                     document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
-                    document.querySelector('.offcanvas-header img').setAttribute('src', ramen_details.img_base64);
+                    document.querySelector('.offcanvas-body img').setAttribute('src', ramen_details.img_base64);
                     document.querySelector('.offcanvas-body .official-site').innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;;
                     document.querySelector('.offcanvas-body .address').textContent = "地址: " + ramen_details.address;
                     document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.maps_url}" target="_blank">在google地圖中顯示</a>`;
@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                     
                     // ramen feature tags
-                    const ramenFeaturesContainer = document.querySelector('.offcanvas-body .ramen-features');
+                    const ramenFeaturesContainer = document.querySelector('.offcanvas-header .ramen-features');
                     ramenFeaturesContainer.innerHTML = '';
                     for (const features of ramen_details.features) {
                         ramenFeaturesContainer.innerHTML += `<span class="badge rounded-pill bg-info text-dark">${features}</span>&ensp;`;
