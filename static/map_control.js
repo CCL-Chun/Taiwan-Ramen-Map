@@ -63,13 +63,6 @@ $(document).ready(function() {
 
 function initializeMap(lat = 25.052430, lng = 121.520270) {
 
-    let CartoDB_Voyager = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        });
-
     let CartoDB_VoyagerLabelsUnder = L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -102,11 +95,10 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
     map = L.map('map',{
         center: [lat, lng],
         zoom: 16,
-        layers: [CartoDB_Voyager,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer]
+        layers: [CartoDB_VoyagerLabelsUnder,startPoint,ramenLayer,parkingLayer,routesLayer,highlightedRouteLayer,bikeRoutesLayer]
     });
 
     var baseMaps = {
-        "CartoDB_Voyager": CartoDB_Voyager,
         "CartoDB_VoyagerLabelsUnder": CartoDB_VoyagerLabelsUnder,
         "OpenStreetMap_HOT": OpenStreetMap_HOT,
         // "Stadia_OSMBright": Stadia_OSMBright,
@@ -438,8 +430,11 @@ function displaySegmentedNavigationInstructions(routeData) {
     });
 
     // display YouBike route instructions
+    youbikeRouteTab = document.getElementById('youbike-instructions-tab')
+
     if (routeData.prompt[0].youbike_improve === 1) {
         // console.log("YouBike route get!")
+        youbikeRouteTab.setAttribute('class','nav-link')
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
         youbikeSteps.forEach((step, index) => {
             var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
@@ -465,7 +460,7 @@ function displaySegmentedNavigationInstructions(routeData) {
             });
         });
     } else {
-        document.getElementById('youbike-instructions-tab').setAttribute('class','nav-link disabled')
+        youbikeRouteTab.setAttribute('class','nav-link disabled')
     }
 }
 

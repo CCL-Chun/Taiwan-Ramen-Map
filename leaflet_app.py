@@ -343,7 +343,7 @@ def route_plan():
                             bike_route.append(step)
                         # WALK from YouBike to ramen
                         for step in youbike_route[2]['steps']:
-                            bike_route.appsend(step)
+                            bike_route.append(step)
                     else:
                         # logging.debug(bike_route)
                         raise Exception(f"Total {len(youbike_route)} steps for 4 waypoints!")

@@ -139,6 +139,7 @@ button:hover {
     justify-content: space-between;
     align-items: center;
     flex-grow: 1;
+    gap: 0.5em;
 }
 
 .popup-body {
