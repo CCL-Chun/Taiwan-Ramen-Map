@@ -95,7 +95,7 @@ function initializeMap(lat = 25.052430, lng = 121.520270) {
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
         });
 
-    let startMarker = L.marker([lat, lng]).bindPopup('拉麵暴徒在此')
+    let startMarker = L.marker([lat, lng]).bindPopup('<div class="popup-header">拉麵暴徒在此</div>')
     startPoint = L.layerGroup([startMarker]);
 
     // default to 中山 if no geolocation
@@ -232,21 +232,28 @@ function updateRamen(){
                 L.geoJSON(ramen_geojson, {
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
-                            var popupContent = feature.properties.name +
-                                        '<br>' + feature.properties.weekday + feature.properties.open +
-                                        '<br>評分: ' + feature.properties.overall + ' / 5'+
-                                        '<br>' + feature.properties.address + '<br>' + 
-                                        '<button class="find-parking btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
-                                            ' ' + 'lat=' + feature.geometry.coordinates[1] +
-                                            '>附近停車位</button>' + '<br>' +
-                                        '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
-                                            ' ' + 'lat=' + feature.geometry.coordinates[1] + ' type="button" data-bs-toggle="offcanvas" ' +
-                                            'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
-                                            '拉麵突進導航</button>' + '<br>' +
-                                        '<button id=' + feature.properties.id + ' ' +
-                                            'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
-                                            'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
-                                            '詳細資訊與現場情報</button>';
+                            var popupContent =
+                                        '<div class="popup-header">' +
+                                            '<div class="popup-title">'+feature.properties.name+'</div>'+
+                                            '<div class="popup-title">'+feature.properties.overall+'&starf;'+'</div>'+
+                                        '</div>' +
+                                        '<div class="popup-body">' +
+                                            '<div class="popup-text">'+feature.properties.weekday + feature.properties.open +
+                                            '<br>' + feature.properties.address + '</div>' +
+                                        '</div>' +
+                                        '<div class="button-container">'+
+                                            '<button class="find-parking btn-info btn-sm border border-dark" lng=' + feature.geometry.coordinates[0] + 
+                                                ' ' + 'lat=' + feature.geometry.coordinates[1] +
+                                                '>附近停車位</button>' +
+                                            '<button class="bring-me-here btn-info btn-sm border border-dark" lng=' + feature.geometry.coordinates[0] + 
+                                                ' ' + 'lat=' + feature.geometry.coordinates[1] + ' data-bs-toggle="offcanvas" ' +
+                                                'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
+                                                '拉麵導航</button>' +
+                                            '<button id=' + feature.properties.id + ' ' +
+                                                'class="btn-info btn-sm border border-dark" data-bs-toggle="offcanvas" ' +
+                                                'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
+                                                '詳細資訊</button>' +
+                                        '</div>';
                             layer.bindPopup(popupContent);
                         }
                     }
@@ -519,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // rating
                     const overallRating = ramen_details.overall_rating;
-                    const totalReviews = overallRating.amount_5 + overallRating.amount_4 + overallRating.amount_3 + overallRating.amount_2 + overallRating.amount_1;
+                    const highestReviews = Math.max(overallRating.amount_5, overallRating.amount_4, overallRating.amount_3, overallRating.amount_2, overallRating.amount_1);
                     const meanRating = parseFloat(overallRating.mean);
 
                     const ratingDetails = `
@@ -529,21 +536,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         </button>
                         <div class="collapse" id="ratingCollapse">
                             <div class="progress">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: ${(overallRating.amount_5 / totalReviews) * 100}%">
-                                    5星: ${overallRating.amount_5}
-                                </div>
-                                <div class="progress-bar bg-info" role="progressbar" style="width: ${(overallRating.amount_4 / totalReviews) * 100}%">
-                                    4星: ${overallRating.amount_4}
-                                </div>
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: ${(overallRating.amount_3 / totalReviews) * 100}%">
-                                    3星: ${overallRating.amount_3}
-                                </div>
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: ${(overallRating.amount_2 / totalReviews) * 100}%">
-                                    2星: ${overallRating.amount_2}
-                                </div>
-                                <div class="progress-bar bg-secondary" role="progressbar" style="width: ${(overallRating.amount_1 / totalReviews) * 100}%">
-                                    1星: ${overallRating.amount_1}
-                                </div>
+                                <div>5&starf;</div>
+                                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${(overallRating.amount_5 / highestReviews) * 100}%"></div>
+                            </div>
+                            <div class="progress">
+                                <div>4&starf;</div>
+                                <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${(overallRating.amount_4 / highestReviews) * 100}%"></div>
+                            </div>
+                            <div class="progress">
+                                <div>3&starf;</div>
+                                <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${(overallRating.amount_3 / highestReviews) * 100}%"></div>
+                            </div>
+                            <div class="progress">
+                                <div>2&starf;</div>
+                                <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${(overallRating.amount_2 / highestReviews) * 100}%"></div>
+                            </div>
+                            <div class="progress">
+                                <div>1&starf;</div>
+                                <div class="progress-bar bg-secondary progress-bar-striped progress-bar-animated" role="progressbar" style="width: ${(overallRating.amount_1 / highestReviews) * 100}%"></div>
                             </div>
                         </div>`;
 
@@ -630,33 +640,33 @@ function toggleOffCanvasVisibility() {
     }
 }
 
-document.getElementById('instructions-wrapper').addEventListener('shown.bs.offcanvas', function () {
-    document.getElementById('toggleButton').style.display = 'none'; // Hide button when off-canvas is open
-});
+// document.getElementById('instructions-wrapper').addEventListener('shown.bs.offcanvas', function () {
+//     document.getElementById('toggleButton').style.display = 'none'; // Hide button when off-canvas is open
+// });
 
-document.getElementById('offcanvasScrolling').addEventListener('shown.bs.offcanvas', function () {
-    document.getElementById('toggleButton').style.left = '300px'; // Hide button when off-canvas is open
-});
+// document.getElementById('offcanvasScrolling').addEventListener('shown.bs.offcanvas', function () {
+//     document.getElementById('toggleButton').style.left = '300px'; // Hide button when off-canvas is open
+// });
 
-let offcanvasElements = document.querySelectorAll('.offcanvas');
+// let offcanvasElements = document.querySelectorAll('.offcanvas');
 
-// Loop through each element and attach the event listener
-offcanvasElements.forEach(function(offcanvas) {
-    offcanvas.addEventListener('hidden.bs.offcanvas', function () {
-        // Assuming 'offcanvasScrolling' is a specific off-canvas you want to check
-        var offcanvasDetails = document.getElementById('offcanvasScrolling');
-        var toggleButton = document.getElementById('toggleButton');
+// // Loop through each element and attach the event listener
+// offcanvasElements.forEach(function(offcanvas) {
+//     offcanvas.addEventListener('hidden.bs.offcanvas', function () {
+//         // Assuming 'offcanvasScrolling' is a specific off-canvas you want to check
+//         var offcanvasDetails = document.getElementById('offcanvasScrolling');
+//         var toggleButton = document.getElementById('toggleButton');
 
-        // Check if the specific off-canvas is still shown or not
-        if (offcanvasDetails && offcanvasDetails.classList.contains('show')) {
-            toggleButton.style.display = 'block'; // Show button when off-canvas is open
-            toggleButton.style.left = '300px';
-        } else {
-            toggleButton.style.display = 'block'; // Show button when all off-canvas are closed
-            toggleButton.style.left = '0px';
-        }
-    });
-});
+//         // Check if the specific off-canvas is still shown or not
+//         if (offcanvasDetails && offcanvasDetails.classList.contains('show')) {
+//             toggleButton.style.display = 'block'; // Show button when off-canvas is open
+//             toggleButton.style.left = '300px';
+//         } else {
+//             toggleButton.style.display = 'block'; // Show button when all off-canvas are closed
+//             toggleButton.style.left = '0px';
+//         }
+//     });
+// });
 
 // Search functions
 function performSearch() {
