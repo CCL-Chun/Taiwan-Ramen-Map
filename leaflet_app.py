@@ -92,6 +92,31 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
     try:
         start_bike_station = find_youbike(float(start_lat),float(start_lng))
         end_bike_station = find_youbike(float(end_lat),float(end_lng))
+
+        start_info = {
+            "latlng":[
+                start_bike_station['geometry']['coordinates'][1],
+                start_bike_station['geometry']['coordinates'][0]
+            ],
+            "sna":start_bike_station['properties']['sna'],
+            "total":start_bike_station['properties']['total'],
+            "available_rent_bikes":start_bike_station['properties']['available_rent_bikes'],
+            "available_return_bikes":start_bike_station['properties']['available_return_bikes'],
+            "updateTime":start_bike_station['properties']['updateTime']
+        }
+
+        end_info = {
+            "latlng":[
+                end_bike_station['geometry']['coordinates'][1],
+                end_bike_station['geometry']['coordinates'][0]
+            ],
+            "sna":end_bike_station['properties']['sna'],
+            "total":end_bike_station['properties']['total'],
+            "available_rent_bikes":end_bike_station['properties']['available_rent_bikes'],
+            "available_return_bikes":end_bike_station['properties']['available_return_bikes'],
+            "updateTime":end_bike_station['properties']['updateTime']
+        }
+
     except Exception as e:
         logging.info(f"{e} Use origin plan.")
         return make_response(jsonify({"error": f"{e} Use origin plan."}), 403)
@@ -143,8 +168,28 @@ def route_youbike(start_lat,start_lng,end_lat,end_lng):
         "computeAlternativeRoutes": "true",
         "polylineEncoding": "GEO_JSON_LINESTRING", # specifying GeoJSON line string
     }
-    response = requests.post(url, headers=headers, json=payload)
-    return response
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            route_data = response.json()
+            
+            route_json = {
+                "route_data":route_data,
+                "start_info":start_info,
+                "end_info":end_info
+            }
+
+            return jsonify(route_json), 200
+        else:
+            logging.exception(f"{e} Use origin plan.")
+            return make_response(jsonify({"error": f"{e} Use origin plan."}), response.status_code)
+    
+    except Exception as e:
+        logging.info(f"{e} Use origin plan.")
+        return make_response(jsonify({"error": f"{e} Use origin plan."}), 403)
+        
 
 def check_and_log_missing_data(ramen, field):
     if field not in ramen or not ramen[field]:
@@ -322,6 +367,8 @@ def route_plan():
         print(way)
         # planning YouBike route start from the end of the first bus route
         bike_route = []
+        start_info = []
+        end_info = []
         if way.count('BUS') > 1:
             change_index = way.index('BUS') # the index of route to break and concat YouBike route
             change_location = fastest_route[0]['steps'][change_index]['transitDetails']['stopDetails']['arrivalStop']['location']['latLng']
@@ -329,9 +376,12 @@ def route_plan():
 
             try:
                 Bike_response = route_youbike(change_location['latitude'],change_location['longitude'],end_lat,end_lng)
-                if Bike_response.status_code == 200:
-                    Bike = Bike_response.json()
-                    youbike_route = Bike['routes'][0]['legs']
+                if Bike_response[1] == 200: # for flask internal function check
+                    Bike = Bike_response[0].get_json()
+                    
+                    start_info = Bike['start_info']
+                    end_info = Bike['end_info']
+                    youbike_route = Bike['route_data']['routes'][0]['legs']
             
                     if len(youbike_route) == 3:
                         # WALK from bus stop to YouBike
@@ -372,7 +422,9 @@ def route_plan():
     # add prompt for front-end to quick indexing
     result['prompt'] = [{
         'fastest_index' : concat_index,
-        'youbike_improve' : 1 if bike_route else 0
+        'youbike_improve' : 1 if bike_route else 0,
+        'start_info' : start_info,
+        'end_info' : end_info
     }]
 
     return jsonify(result), 200
