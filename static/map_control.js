@@ -11,11 +11,27 @@ let lastMoveLatLng;
 let newLatLng;
 let socket;
 
+// set an icon for ramens
+var ramenIcon = L.icon({
+    iconUrl: 'static/ramen.png',
+    iconSize: [25, 40],
+    iconAnchor: [12, 41],
+    popupAnchor: [0, -40]
+});
+
+// set an icon for youbike
+var bikeIcon = L.icon({
+    iconUrl: 'static/YouBike.png',
+    iconSize: [80, 30],
+    iconAnchor: [12, 41],
+    popupAnchor: [0, -40]
+});
+
 // initialize the map
 $(document).ready(function() {
     // default to 中山 if no geolocation
-    defaultLat = 25.052430;
-    defaultLng = 121.520270;
+    defaultLat = 25.0384799;
+    defaultLng = 121.5323702;
     // steps to init the map
     function init() {
         initializeMap(defaultLat, defaultLng);
@@ -222,6 +238,9 @@ function updateRamen(){
             .then(response => response.json())
             .then(ramen_geojson => {
                 L.geoJSON(ramen_geojson, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {icon: ramenIcon});
+                    },
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
                             var popupContent =
@@ -387,12 +406,32 @@ function addAllRoutesToMap(routeData) {
 
     // add combined route if routeData.youbike_improve is 1
     if (routeData.prompt[0].youbike_improve === 1) {
+        // display youbike stations
+        var startInfo = routeData.prompt[0].start_info;
+        var endInfo = routeData.prompt[0].end_info;
+        createStationMarker(startInfo);
+        createStationMarker(endInfo);
+
         var youbikeRoute = routeData.routes[fastestIndex].legs[1][1];
         youbikeRoute.steps.forEach(step => {
             var lineCoordinates = step.polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
             L.polyline(lineCoordinates, { color: '#08F7F7', weight: 5 }).addTo(bikeRoutesLayer);
         });
     }
+}
+
+function createStationMarker(info) {
+    var latlng = info.latlng;
+    var popupContent = `
+        <div><strong>Station: </strong>${info.sna}</div>
+        <div><strong>Total Docks: </strong>${info.total}</div>
+        <div><strong>Available Bikes: </strong>${info.available_rent_bikes}</div>
+        <div><strong>Empty Docks: </strong>${info.available_return_bikes}</div>
+        <div><strong>Last Updated: </strong>${info.updateTime}</div>
+    `;
+
+    var marker = L.marker(latlng,{icon: bikeIcon}).addTo(bikeRoutesLayer);
+    marker.bindPopup(popupContent);
 }
 
 function displaySegmentedNavigationInstructions(routeData) {
@@ -732,6 +771,9 @@ function searchRamen(place_id){
             .then(response => response.json())
             .then(ramen_geojson => {
                 var geoJSONLayer = L.geoJSON(ramen_geojson, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {icon: ramenIcon});
+                    },
                     onEachFeature: function (feature, layer) {
                         var popupContent = createPopupContent(feature);
                         layer.bindPopup(popupContent);
@@ -750,19 +792,25 @@ function searchRamen(place_id){
 };
 
 function createPopupContent(feature) {
-    return feature.properties.name +
-        '<br>' + feature.properties.weekday + feature.properties.open +
-        '<br>評分: ' + feature.properties.overall + ' / 5'+
-        '<br>' + feature.properties.address + '<br>' + 
-        '<button class="find-parking btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
-            ' ' + 'lat=' + feature.geometry.coordinates[1] +
-            '>附近停車位</button>' + '<br>' +
-        '<button class="bring-me-here btn-outline-primary btn-sm" lng=' + feature.geometry.coordinates[0] + 
-            ' ' + 'lat=' + feature.geometry.coordinates[1] + ' type="button" data-bs-toggle="offcanvas" ' +
-            'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
-            '拉麵突進導航</button>' + '<br>' +
-        '<button id=' + feature.properties.id + ' ' +
-            'class="btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" ' +
-            'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
-            '詳細資訊與現場情報</button>';
+    return '<div class="popup-header">' +
+                '<div class="popup-title">'+feature.properties.name+'</div>'+
+                '<div class="popup-title">'+feature.properties.overall+'&starf;'+'</div>'+
+            '</div>' +
+            '<div class="popup-body">' +
+                '<div class="popup-text">'+feature.properties.weekday + feature.properties.open +
+                '<br>' + feature.properties.address + '</div>' +
+            '</div>' +
+            '<div class="button-container">'+
+                '<button class="find-parking btn-info btn-sm border border-dark" lng=' + feature.geometry.coordinates[0] + 
+                    ' ' + 'lat=' + feature.geometry.coordinates[1] +
+                    '>附近停車位</button>' +
+                '<button class="bring-me-here btn-info btn-sm border border-dark" lng=' + feature.geometry.coordinates[0] + 
+                    ' ' + 'lat=' + feature.geometry.coordinates[1] + ' data-bs-toggle="offcanvas" ' +
+                    'data-bs-target="#instructions-wrapper" aria-controls="instructions-wrapper">' +
+                    '拉麵導航</button>' +
+                '<button id=' + feature.properties.id + ' ' +
+                    'class="btn-info btn-sm border border-dark" data-bs-toggle="offcanvas" ' +
+                    'data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">' +
+                    '詳細資訊</button>' +
+            '</div>';
 }
