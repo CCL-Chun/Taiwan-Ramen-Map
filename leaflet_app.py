@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, make_response
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 from Database import MongoDBConnection
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import logging
 import redis
@@ -61,6 +61,13 @@ weekDaysMapping = ("星期一", "星期二",
 def weekday():
     # will return 0 when Monday
     return datetime.weekday(datetime.now(pytz.utc).astimezone(timezone))
+
+## calculate remain time to expiration for redis
+def calculate_ttl():
+    now = datetime.now(timezone)
+    midnight_next_day = (now + timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
+    ttl = (midnight_next_day - now).total_seconds()
+    return int(ttl)
 
 ## function for finding nearest YouBike station
 def find_youbike(lat,lng):
@@ -445,7 +452,8 @@ def handle_custom_connect_event(data):
 def handle_client_event(data):
     room_id = data['id']
     message = str(data['data'])
-    timestamp = datetime.now(pytz.utc).strftime("%Y/%m/%d %H:%M:%S")
+    timestamp = datetime.now(timezone).strftime("%Y/%m/%d %H:%M:%S")
+    date_key = datetime.now(timezone).strftime("%Y/%m/%d")
 
     message_data = {
         'message': message,
@@ -453,9 +461,15 @@ def handle_client_event(data):
     }
     message_json = json.dumps(message_data)
 
-    # Store message in Redis with expiration time (24 hours = 86400 seconds)
-    redis_key = f"messages_{room_id}_{timestamp}"
-    redis_client.setex(redis_key, 86400, message_json)
+    # Store message in Redis key and give a certain date
+    redis_key = f"messages_{room_id}_{date_key}"
+
+    # Add the message to the sorted set
+    redis_client.zadd(redis_key, {message_json: datetime.now(timezone).timestamp()})
+
+    if redis_client.ttl(redis_key) == -1:  # TTL of -1 indicates the key has no expiration
+        ttl = calculate_ttl()
+        redis_client.expire(redis_key, ttl)
 
     emit('server_response', {
         'message': message,
@@ -467,15 +481,17 @@ def on_join(data):
     room_id = data['id']
     join_room(room_id)
 
-    # Fetch all messages for this room from Redis
-    keys = redis_client.keys(f"messages_{room_id}_*")
-    messages = [json.loads(redis_client.get(k).decode('utf-8')) for k in keys]
-    
+    date_key = datetime.now(timezone).strftime("%Y/%m/%d")
+    # key to retrieve messages
+    redis_key = f"messages_{room_id}_{date_key}"
+    messages_with_scores = redis_client.zrange(redis_key, 0, -1, withscores=True)
+
     # Emit all previous messages to the client
-    for msg_data in messages:
+    for msg_json, timestamp in messages_with_scores:
+        msg = json.loads(msg_json.decode('utf-8'))
         emit('server_response', {
-            'message': msg_data['message'],
-            'time': msg_data['timestamp']
+            'message': msg['message'],
+            'time': msg['timestamp']
         }, room=room_id)
 
 @socketio.on('leave_room')
