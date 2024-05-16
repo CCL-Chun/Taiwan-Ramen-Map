@@ -46,14 +46,14 @@ class YoubikeTaipei:
 
         parsed_data = []
         for item in data:
-            coordinates = [item.get('lng'), item.get('lat')]
+            coordinates = [item.get('longitude'), item.get('latitude')]
             modified_item = {
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
                     "coordinates": coordinates
                 },
-                "properties": {key: value for key, value in item.items() if key not in ['lat', 'lng']}
+                "properties": {key: value for key, value in item.items() if key not in ['latitude', 'longitude']}
             }
             parsed_data.append(modified_item)
 
