@@ -174,3 +174,33 @@ button:hover {
     align-items: center;
     justify-content: space-between;
 }
+
+.address-container, .open-time, .overall-rating {
+    margin: 3% auto;
+}
+
+/* users' comments */
+#log {
+    height: 300px;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.bikeData {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    font-size: 1rem;
+    width: 100%;
+    margin: 3% auto 3%;
+}
+
+.bikeData div:nth-child(1) {
+    background-color: rgba(91, 232, 91, 0.771);
+}
+
+.bikeData div:nth-child(2) {
+    background-color: rgba(255, 49, 49, 0.759);
+}

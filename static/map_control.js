@@ -4,6 +4,7 @@ let parkingLayer = L.layerGroup();
 let routesLayer = L.layerGroup();
 let highlightedRouteLayer = L.layerGroup();
 let bikeRoutesLayer = L.layerGroup();
+let searchRamenLayer = L.layerGroup();
 let layerControl;
 let defaultLat;
 let defaultLng;
@@ -14,7 +15,7 @@ let socket;
 // set an icon for ramens
 var ramenIcon = L.icon({
     iconUrl: 'static/ramen.png',
-    iconSize: [25, 40],
+    iconSize: [30, 40],
     iconAnchor: [12, 41],
     popupAnchor: [0, -40]
 });
@@ -230,6 +231,11 @@ function updateRamen(){
         } else {
             ramenLayer.clearLayers(); // clear existing ramen if already initialized
         }
+
+        if (!map.hasLayer(ramenLayer)) {
+            map.addLayer(ramenLayer);
+        }
+        
         // get the current map center LatLng for api parameters
         var center = map.getCenter();
         var centerGeo = [center.lng, center.lat];
@@ -423,11 +429,14 @@ function addAllRoutesToMap(routeData) {
 function createStationMarker(info) {
     var latlng = info.latlng;
     var popupContent = `
-        <div><strong>Station: </strong>${info.sna}</div>
-        <div><strong>Total Docks: </strong>${info.total}</div>
-        <div><strong>Available Bikes: </strong>${info.available_rent_bikes}</div>
-        <div><strong>Empty Docks: </strong>${info.available_return_bikes}</div>
-        <div><strong>Last Updated: </strong>${info.updateTime}</div>
+        <div class="popup-header">
+            <div class="popup-title">${info.sna}</div>
+        </div>
+        <div class="bikeData">
+            <div>可借 ${info.available_rent_bikes} 輛</div>
+            <div>可還 ${info.available_return_bikes} 格</div>
+        </div>
+        <div class="popup-body">更新時間 ${info.updateTime}</div>
     `;
 
     var marker = L.marker(latlng,{icon: bikeIcon}).addTo(bikeRoutesLayer);
@@ -446,6 +455,18 @@ function displaySegmentedNavigationInstructions(routeData) {
     var mainSteps = routeData.routes[fastestIndex].legs[0].steps;
     mainSteps.forEach((step, index) => {
         var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
+
+        if (instructionText.startsWith('公車')) {
+            // Append transit details if available
+            if (step.transitDetails) {
+                var arrivalStopName = step.transitDetails.stopDetails.arrivalStop.name;
+                var transitLineName = step.transitDetails.transitLine.nameShort;
+                var stopCount = step.transitDetails.stopCount;
+                instructionText += '<br>'
+                instructionText += ` 搭乘${transitLineName} 在 ${arrivalStopName} 下車(共${stopCount}站)`;
+            }
+        }
+
         var instruction = $('<div class="instruction" data-step-index="' + index + '">' + instructionText + '</div>');
         // add icon based on travelMode
         var iconClass = '';
@@ -477,6 +498,18 @@ function displaySegmentedNavigationInstructions(routeData) {
         var youbikeSteps = routeData.routes[fastestIndex].legs[1][1].steps;
         youbikeSteps.forEach((step, index) => {
             var instructionText = (step.navigationInstruction && step.navigationInstruction.instructions) ? step.navigationInstruction.instructions : '走路';
+
+            if (instructionText.startsWith('公車')) {
+                // Append transit details if available
+                if (step.transitDetails) {
+                    var arrivalStopName = step.transitDetails.stopDetails.arrivalStop.name;
+                    var transitLineName = step.transitDetails.transitLine.nameShort;
+                    var stopCount = step.transitDetails.stopCount;
+                    instructionText += '<br>'
+                    instructionText += ` 搭乘${transitLineName} 在 ${arrivalStopName} 下車(共${stopCount}站)`;
+                }
+            }
+
             var instruction = $('<div class="instruction youbike" data-step-index="' + index + '">' + instructionText + '</div>');
             // add icon based on travelMode
             var iconClass = '';
@@ -509,7 +542,7 @@ function highlightStep(stepIndex, steps) {
     var stepCoordinates = steps[stepIndex].polyline.geoJsonLinestring.coordinates.map(coord => [coord[1], coord[0]]);
     var polyline = L.polyline(stepCoordinates, { color: 'red', weight: 5 }).addTo(highlightedRouteLayer);
 
-    map.fitBounds(polyline.getBounds(), {maxZoom: 18});
+    map.fitBounds(polyline.getBounds(), {maxZoom: 15});
 }
 
 // Event listener for opening the offcanvas
@@ -527,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
                     document.querySelector('.offcanvas-body img').setAttribute('src', ramen_details.img_base64);
                     document.querySelector('.offcanvas-body .official-site').innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;;
-                    document.querySelector('.offcanvas-body .address').textContent = "地址: " + ramen_details.address;
+                    document.querySelector('.offcanvas-body .address').textContent = ramen_details.address;
                     document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.maps_url}" target="_blank">在google地圖中顯示</a>`;
                     
                     // open time
@@ -617,12 +650,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 window.socket.on('server_response', function(data) {
+                    prependMessage(data);
+                });
+
+                function prependMessage(data) {
                     var logElement = document.getElementById('log');
                     var div = document.createElement('div');
-                    // div.textContent = 'Received: ' + data.message;
                     div.innerHTML = data.time + '<br>' + "    " + data.message;
-                    logElement.appendChild(div);
-                });
+                    // Insert the new message at the top of the message log
+                    if (logElement.firstChild) {
+                        logElement.insertBefore(div, logElement.firstChild);
+                    } else {
+                        logElement.appendChild(div);
+                    }
+                }
             } else {
                 bsOffcanvas.hide();
             }
@@ -763,8 +804,8 @@ document.addEventListener('click', function(event) {
 
 function searchRamen(place_id){
     if (map) {
-        if (!ramenLayer) {
-            ramenLayer = L.layerGroup().addTo(map);
+        if (!searchRamenLayer) {
+            searchRamenLayer = L.layerGroup().addTo(map);
         }
 
         fetch(`/ramen/api/v1.0/restaurants/searchone?place_id=${place_id}`)
@@ -778,13 +819,15 @@ function searchRamen(place_id){
                         var popupContent = createPopupContent(feature);
                         layer.bindPopup(popupContent);
                     }
-                }).addTo(ramenLayer);
+                }).addTo(searchRamenLayer);
 
                 map.fitBounds(geoJSONLayer.getBounds());
 
                 if (ramen_geojson.features.length > 0) {
+                    map.addLayer(searchRamenLayer);
                     var firstFeatureLayer = geoJSONLayer.getLayers()[0]; // Gets the first layer in the GeoJSON layer
                     firstFeatureLayer.openPopup(); // Open the popup
+                    map.removeLayer(ramenLayer);
                 }
             })
             .catch(error => console.error('Error fetching data:', error));
