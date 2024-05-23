@@ -9,7 +9,7 @@ import logging
 import os
 import mongomock
 
-logging.basicConfig(level=logging.INFO,filename='log/ramen_map_log',filemode='a',
+logging.basicConfig(level=logging.INFO,filename='../log/ramen_map_log',filemode='a',
    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 
 # Determine the configuration class
