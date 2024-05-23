@@ -240,7 +240,7 @@ function updateRamen(){
         var center = map.getCenter();
         var centerGeo = [center.lng, center.lat];
 
-        fetch(`/ramen/api/v1.0/restaurants?center=${centerGeo}`)
+        fetch(`/api/v1.0/ramens?center=${centerGeo}`)
             .then(response => response.json())
             .then(ramen_geojson => {
                 L.geoJSON(ramen_geojson, {
@@ -335,7 +335,7 @@ function findParking(lat,lng){
         "23": "大客車與小型車共用格位"
     }
 
-    fetch(`/traffic/api/v1.0/parking?lat=${lat}&lng=${lng}`)
+    fetch(`/api/v1.0/parking?lat=${lat}&lng=${lng}`)
         .then(response => response.json())
         .then(parking_data => {
             L.geoJSON(parking_data, {
@@ -389,7 +389,7 @@ function fetchAndDisplayRoutes(defaultLat, defaultLng, endLat, endLng) {
     }
 
     // fetch the planned route 
-    fetch(`/traffic/api/v1.0/routes/combined?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
+    fetch(`/api/v1.0/routes/combined?start_lat=${defaultLat}&start_lng=${defaultLng}&end_lat=${endLat}&end_lng=${endLng}`)
         .then(response => response.json())
         .then(data => {
             console.log(data);
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var currentId = event.target.id;  // get the id attribute from the button
             offcanvasElement.setAttribute('data-current-id', currentId); // set the data-current-id attribute on the offcanvas before showing it
         
-            fetch(`/ramen/api/v1.0/details?id=${currentId}`)
+            fetch(`/api/v1.0/ramens/details?id=${currentId}`)
                 .then(response => response.json())
                 .then(ramen_details => {
                     document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
@@ -749,7 +749,7 @@ function performSearch() {
     var resultsList = document.getElementById('resultsList');
 
     if (inputValue.length > 1) {
-        fetch(`/search/api/v1.0/name/autocomplete?query=${encodeURIComponent(inputValue)}`)
+        fetch(`/api/v1.0/ramens/autocomplete?query=${encodeURIComponent(inputValue)}`)
             .then(response => response.json())
             .then(data => {
                 if (!resultsList) {
@@ -808,7 +808,7 @@ function searchRamen(place_id){
             searchRamenLayer = L.layerGroup().addTo(map);
         }
 
-        fetch(`/ramen/api/v1.0/restaurants/searchone?place_id=${place_id}`)
+        fetch(`/api/v1.0/ramens/${place_id}`)
             .then(response => response.json())
             .then(ramen_geojson => {
                 var geoJSONLayer = L.geoJSON(ramen_geojson, {

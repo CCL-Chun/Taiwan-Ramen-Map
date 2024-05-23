@@ -1,0 +1,4 @@
+googlemaps_API_Key = ''
+MongoDB_user = ''
+MongoDB_password = ''
+MongoDB_cluster_url = ''
