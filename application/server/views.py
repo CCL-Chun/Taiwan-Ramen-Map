@@ -1,4 +1,4 @@
-from flask import render_template
+from flask import render_template, jsonify
 from server import app
 
 @app.route("/")
