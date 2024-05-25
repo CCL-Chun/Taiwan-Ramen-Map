@@ -2,3 +2,6 @@
 *.js linguist-language=JavaScript
 *.html linguist-language=HTML
 *.css linguist-language=CSS
+
+*.ipynb linguist-documentation
+*.md linguist-documentation=true
