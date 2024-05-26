@@ -1,6 +1,7 @@
 # only for dev test
-test*.*
+/test*
 !tests/
+!tests/**
 .DS_store
 log*
 
