@@ -2,6 +2,7 @@
 ![Static Badge](https://img.shields.io/badge/Flask-2.3.1-orange?style=plastic&logo=flask)
 ![Static Badge](https://img.shields.io/badge/Socket.IO-4.7.4-white?style=plastic&logo=socket.io&labelColor=black)
 ![Static Badge](https://img.shields.io/badge/Redis--stack-7.2.0--v10-%23FF0000?style=plastic&logo=Redis&labelColor=white)
+![Static Badge](https://img.shields.io/badge/Selenium-4.20.0-50C878?style=plastic&logo=selenium)
 ![Static Badge](https://img.shields.io/badge/Leaflet-1.9.4-blue?style=plastic&logo=leaflet&labelColor=green)
 ![Static Badge](https://img.shields.io/badge/Bootstrap-5.1.3-purple?style=plastic&logo=Bootstrap&labelColor=white)
 
