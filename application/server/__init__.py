@@ -9,7 +9,7 @@ import logging
 import os
 import mongomock
 
-logging.basicConfig(level=logging.INFO,filename='../log/ramen_map_log',filemode='a',
+logging.basicConfig(level=logging.WARN,filename='../log/ramen_map_log',filemode='a',
    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 
 # Determine the configuration class
@@ -23,32 +23,6 @@ if config_class == TestConfig:
     # Use mongomock for MongoDB in testing
     mock_mongo_client = mongomock.MongoClient()
     app.mongo_connection = mock_mongo_client[app.config['DB_NAME']]
-
-    # Mock Redis client
-    class MockRedis:
-        def __init__(self):
-            self.store = {}
-
-        def get_client(self):
-            return self
-
-        def execute_command(self, *args):
-            pass
-
-        def hset(self, key, mapping):
-            self.store[key] = mapping
-
-        def get(self, key):
-            return self.store.get(key, None)
-
-        def delete(self, key):
-            if key in self.store:
-                del self.store[key]
-
-        def drop_database(self, db_name):
-            self.store = {}
-
-    app.redis_connection = MockRedis()
 
     # Mock SocketIO
     class MockSocketIO:
