@@ -1,6 +1,5 @@
-# only for test
-test*
-edgedriver_mac64_m1/*
+# only for dev test
+./test*.*
 .DS_store
 log*
 
