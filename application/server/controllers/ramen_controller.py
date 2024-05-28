@@ -4,7 +4,6 @@ from utils import create_geojson_feature, check_and_log_missing_data
 import logging
 
 
-
 @app.route("/api/v1.0/ramens", methods=["GET"])
 def get_ramens():
     mongo_connection = app.mongo_connection
@@ -25,7 +24,7 @@ def get_ramens():
                 "$geoWithin": {
                     "$centerSphere": [
                         [lng, lat],
-                        4 / 6378.1  # equatorial radius of Earth in kilometers
+                        3 / 6378.1  # equatorial radius of Earth in kilometers
                     ]
                 }
             }

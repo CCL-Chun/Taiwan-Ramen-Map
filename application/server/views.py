@@ -1,5 +1,6 @@
 from flask import render_template, jsonify, request
 from server import app
+from werkzeug.exceptions import HTTPException
 import logging
 
 @app.route("/")

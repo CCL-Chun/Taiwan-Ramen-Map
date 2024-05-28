@@ -7,7 +7,7 @@ class MongoDBConnection:
     def __init__(self, uri, db_name):
         """Initialize the MongoDB connection."""
         try:
-            self.client = MongoClient(uri, server_api=ServerApi('1'))
+            self.client = MongoClient(uri, server_api=ServerApi('1'),readPreference='secondaryPreferred')
             self.db = self.client[db_name]
         except Exception as e:
             logging.error(f"Cannot connect to MongoDB! {e}")

@@ -77,26 +77,42 @@ def parse_redis_search_results(results):
 
 def setup_redis_index(collection_ramen, redis_client):
     try:
+        logging.info("Fetching ramen names from MongoDB.")
         ramen_names = list(collection_ramen.find({
             "name": {"$exists": True}, "place_id": {"$exists": True}, "address": {"$exists": True}
         }, {
             "_id": 0, "name": 1, "place_id": 1, "address": 1
         }))
+        logging.info(f"Fetched {len(ramen_names)} ramen names.")
 
-        redis_client.execute_command('FT.DROPINDEX', 'ramen_names_idx', 'IF EXISTS')
+        # Check if the index exists before trying to drop it
+        try:
+            if redis_client.execute_command('FT._LIST') and 'ramen_names_idx' in redis_client.execute_command('FT._LIST'):
+                logging.info("Dropping existing Redis index.")
+                redis_client.execute_command('FT.DROPINDEX', 'ramen_names_idx', 'IF EXISTS')
+            else:
+                logging.info("No existing Redis index to drop.")
+        except Exception as e:
+            logging.warning(f"Error checking or dropping existing Redis index: {e}")
 
+        # Define schema for the new index
         schema = ['name', 'TEXT', 'place_id', 'TEXT', 'address', 'TEXT']
+        logging.info("Creating new Redis index.")
         redis_client.execute_command('FT.CREATE', 'ramen_names_idx', 'ON', 'HASH', 'PREFIX', 1, 'ramen:', 'SCHEMA', *schema)
 
+        # Add ramen names to Redis
+        logging.info("Adding ramen names to Redis.")
         for item in ramen_names:
             key = f"ramen:{item['name']}"
             redis_client.hset(key, mapping={
-                'name': item['name'], 
+                'name': item['name'],
                 'place_id': item['place_id'],
                 'address': item['address']
             })
+        logging.info("Redis index setup successfully.")
+
     except Exception as e:
-        logging.error(f"Failed to setup Redis index: {e}")
+        logging.warning(f"Failed to setup Redis index: {e}")
 
 def store_message(redis_client, room_id, date_key, message_json, timezone):
     redis_key = f"messages_{room_id}_{date_key}"
