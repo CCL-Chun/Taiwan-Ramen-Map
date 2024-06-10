@@ -559,9 +559,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(ramen_details => {
                     document.getElementById('offcanvasScrollingLabel').textContent = ramen_details.name;
                     document.querySelector('.offcanvas-body img').setAttribute('src', ramen_details.img_base64);
-                    document.querySelector('.offcanvas-body .official-site').innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;;
                     document.querySelector('.offcanvas-body .address').textContent = ramen_details.address;
                     document.querySelector('.offcanvas-body .google-maps').innerHTML = `<a href="${ramen_details.maps_url}" target="_blank">在google地圖中顯示</a>`;
+                    let websiteElement = document.querySelector('.offcanvas-body .official-site');
+                    if (ramen_details.website === "暫無" || ramen_details.website === "") {
+                        websiteElement.innerHTML = "暫無官方粉專";
+                    } else {
+                        websiteElement.innerHTML = `<a href="${ramen_details.website}" target="_blank">店家網站</a>`;
+                    }
                     
                     // open time
                     const openTimeContainer = document.querySelector('.offcanvas-body .open-time');
