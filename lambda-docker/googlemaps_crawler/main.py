@@ -38,10 +38,10 @@ def lambda_handler(event, context):
     for record in event['Records']:
         # Parse the message body
         message_body = json.loads(record['body'])
-        name = message_body['name']
-        maps_url = message_body['maps_url']
-        alias = message_body['alias']
-        place_id = message_body['place_id']
+        name = message_body.get('name','no_name')
+        maps_url = message_body.get('maps_url','no_url')
+        alias = message_body.get('alias','no_alias')
+        place_id = message_body.get('place_id','')
 
         # Process the URL with Selenium
         try:
@@ -93,25 +93,42 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
 
     driver = webdriver.Chrome(options=options, service=service)
 
+    # for checking data quality
+    successful = {}
+    failed = {}
+
     try:
         driver.get(maps_url)
         actionChains = ActionChains(driver)
         wait = WebDriverWait(driver, timeout=5)
         time.sleep(1)
 
+        # move to main page no matter where the page is opened
+        main_buttons = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Gpq6kf")))
+        actionChains.move_to_element(main_buttons[0]).perform()
+        main_buttons[0].click()
+
         heading_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'h1.DUwDvf')))
         title = heading_element.text
+        successful['title'] = title
 
         ## get coordination
         try:
             get_url = driver.current_url
             url = re.sub(r'@([-\d.]+),([-\d.]+),(\d+).*(\d+)\w/','',get_url)
             new_url = re.sub(r'place/.*/data','place/data',url)
+            successful['new_url'] = new_url # record
             coord = re.search(r'([-\d.]+)(!4d)([-\d.]+)',get_url)
             latitude = coord.group(1)
             longitude = coord.group(3)
+            successful['location'] = ['latitude','longitude'] # record
+
         except Exception as e:
             logger.exception(f"{title} wrong with url")
+            if 'new_url' not in successful:
+                failed['new_url'] = 'failed'
+            if 'location' not in successful:
+                failed['location'] = 'failed'
 
         ## go to opening time
         try:
@@ -137,9 +154,12 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
                 duration = [item.text for item in time_detail.find_elements(By.CLASS_NAME,'G8aQO')]
                 if day:
                     open_time[day] = duration
+
+            successful['open_time'] = 'success'
         except Exception as e:
             logger.error(f"Error while crawling opening time: {title}!{e}")
             open_time = None
+            failed['open_time'] ='failed'
         
         ## get back page if need
         try:
@@ -154,8 +174,10 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
             time.sleep(1)
             image_element = img_button[0].find_element(By.TAG_NAME, 'img')
             img_url = image_element.get_attribute('src')
+            successful['img_url'] = img_url
         except Exception as e:
             logger.error(f"Error while getting image url {title}!{e}")
+            failed['img_url'] = 'failed'
 
         ## img to base64
         try:
@@ -164,32 +186,32 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
             base64_string = base64.b64encode(image_content)
             base64_string = base64_string.decode('utf-8')
             base64_image_url = f'data:image/png;base64,{base64_string}'
+            successful['base64_image_url'] = 'success' # record
         except Exception as e:
             logger.exception(f"cannot convert url to base64 for {title}!Exception: {e}")
-            img_url = None
             base64_image_url = None
+            failed['base64_image_url'] = 'failed'
 
         ## get official website
         try:
             website = driver.find_element(By.CSS_SELECTOR,'a[data-item-id="authority"]').get_attribute('href')
+            successful['website'] = website
         except Exception as e:
             logger.exception(f"cannot find website of {title} !Exception: {e}")
             website = None
+            failed['website'] = 'failed'
 
         ## get address
         try:
             address = driver.find_element(By.CSS_SELECTOR,'button[data-item-id="address"]').get_attribute('aria-label')
             address = re.sub(r'(地址: \d+)','',address)
+            successful['address'] = address # record
         except Exception as e:
             logger.exception(f"cannot find address of {title} !Exception: {e}")
             address = None
+            failed['address'] = 'failed' # record
 
         ## go to reviews
-        try:
-            main_buttons = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Gpq6kf")))
-        except Exception as e:
-            logger.error(f"{title} reviews not done yet!Error: {e}")
-
         actionChains.move_to_element(main_buttons[1]).perform()
         main_buttons[1].click()
 
@@ -199,6 +221,7 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
             mean_rating_element = wait.until(EC.presence_of_all_elements_located((By.XPATH, '//*[@id="QA0Szd"]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div[2]/div/div[2]/div[1]')))
             mean_rating = mean_rating_element[0].text
             overall_rating = {"mean":mean_rating}
+
             ## rating distribution
             rating_elements = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'tr.BHOKXe')))
             for element in rating_elements:
@@ -208,9 +231,12 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
                 review_count = ''.join(filter(str.isdigit, parts[1])) # remove commas and other words
                 review_count = int(review_count)  
                 overall_rating[f'amount_{star_rating}'] = review_count
+
+            successful['overall_rating'] = mean_rating # record
         except Exception:
             logger.error(f"Error {title}: no rating info for {title}")
             overall_rating = None
+            failed['overall_rating'] = 'failed' # record
         
         start_time = time.time()
         while True:
@@ -232,6 +258,7 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
                 except Exception as e:
                     logger.exception(f"Something wired scrolling reviews: {title} {e}")
                     break_condition = True
+                    failed['reviews'] = 'failed' # record
                     continue
 
                 try:
@@ -239,6 +266,7 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
                 except Exception as e:
                     logger.info(f"{title} has no more reviews2!Need to check!")
                     break_condition = True
+                    failed['reviews'] = 'failed' # record
 
                 temp = results[-1]
                 wait_for_element_location_to_be_stable(temp)
@@ -263,6 +291,11 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
             reviews.append({"user_id":user_id,"user_url":user_url,"user_name":user_name,
                             "rating":user_rating,"comment":comment_span})
 
+        if reviews:
+            successful['reviews'] = 'success' # record
+        if not place_id:
+            logger.warning(f"lack of place_id for {title}") # record
+
     except Exception as e:
         raise Exception(f"Cannot action on: {title}!{e}")
     finally:
@@ -282,6 +315,15 @@ def scrape_with_selenium(name,maps_url,alias,place_id):
         "reviews":reviews,
         "place_id":place_id
     }
+
+    logger.info(f"Data health check: {title} success {len(successful)/10:.0%}")
+    logger.info(f"Data health check: {title} failed {len(failed)/10:.0%}")
+
+    for key in successful:
+        logger.info(f"success: {key} | {title}")
+
+    for key in failed:
+        logger.info(f"failed: {key} | {title}")
 
     return crawling_result
 

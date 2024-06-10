@@ -12,7 +12,7 @@ class MongoDBConnection:
             password = os.getenv("MongoDB_password")
             cluster_url = os.getenv("MongoDB_cluster_url")
             uri = f"mongodb+srv://{username}:{password}@{cluster_url}?retryWrites=true&w=majority&appName=ramen-taiwan"
-            self.client = MongoClient(uri, server_api=ServerApi('1'))
+            self.client = MongoClient(uri, server_api=ServerApi('1'),readPreference='secondaryPreferred')
             self.db = self.client['ramen-taiwan']
         except Exception as e:
             print(f"Cannot connect to MongoDB! {e}")
