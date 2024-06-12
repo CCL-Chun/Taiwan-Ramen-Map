@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 pytz==2024.1
 redis==5.0.4
 requests==2.32.0
+setuptools==68.2.2
