@@ -14,7 +14,7 @@ def test_ramen_details_success(test_client, test_app):
     mock_ramen_details = {
         "name": "二屋牡蠣拉麵",
         "maps_url": "https://short.url/maps",
-        "img_base64": "data:image/png;base64,...",
+        "img_url": "data:image/png;base64,...",
         "open_time": {
             "星期六": ["11:30-21:30"],
             "星期日": ["11:30-21:30"],

@@ -8,10 +8,10 @@ import json
 import os
 
 ## write to log
-logging.basicConfig(level=logging.INFO,filename='log_update_youbike.txt',filemode='a',
-    format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
-# logging.basicConfig(level=logging.WARN,filename='log/ramen_map_log',filemode='a',
-#     format='%(asctime)s %(levelname)s:%(message)s')
+# logging.basicConfig(level=logging.INFO,filename='log_update_youbike.txt',filemode='a',
+#     format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
+logging.basicConfig(level=logging.WARN,filename='../log/ramen_map_log',filemode='a',
+    format='%(asctime)s %(levelname)s:%(message)s')
 
 ## connect to cloud MongoDB
 try:

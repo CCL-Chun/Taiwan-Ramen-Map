@@ -4,13 +4,10 @@ from flask_socketio import SocketIO
 from server.models.Database import MongoDBConnection
 from server.models.Redis import RedisConnection
 from config import Config, TestConfig
-from utils import setup_redis_index
+from utils import setup_redis_index, handle_change_stream, start_change_stream_listener
 import logging
 import os
 import mongomock
-
-logging.basicConfig(level=logging.WARN,filename='../log/ramen_map_log',filemode='a',
-   format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
 
 # Determine the configuration class
 config_class = TestConfig if os.getenv('FLASK_ENV') == 'testing' else Config
@@ -42,6 +39,8 @@ if config_class == TestConfig:
 
     socketio = MockSocketIO()
 else:
+    logging.basicConfig(level=logging.WARN,filename='../log/ramen_map_log',filemode='a',
+        format='%(asctime)s %(filename)s %(levelname)s:%(message)s')
     # Initialize extensions
     socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
@@ -54,6 +53,13 @@ else:
         setup_redis_index(app.mongo_connection.get_collection('ramen_info'), app.redis_connection.get_client())
     except Exception as e:
         logging.error(f"Error setting up Redis index: {e}")
+
+    # Setup event-based invalidation to update cache in Redis
+    try:
+        start_change_stream_listener(app.mongo_connection.get_collection('ramen_info'), app.redis_connection.get_client())
+    except Exception as e:
+        logging.error(f"Error setting up event-based invalidation: {e}")
+
 
 # Import routes after app initialization to avoid circular imports
 with app.app_context():
