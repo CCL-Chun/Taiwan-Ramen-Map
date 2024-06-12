@@ -169,8 +169,8 @@ def route_youbike():
 
             return jsonify(route_json), 200
         else:
-            logging.exception(f"{e} Use origin plan.")
-            return make_response(jsonify({"error": f"{e} Use origin plan."}), response.status_code)
+            logging.exception(f"Error getting YouBike route code: {response.status_code} Use origin plan.")
+            return make_response(jsonify({"error": f"{response.status_code} Use origin plan."}), response.status_code)
     
     except Exception as e:
         logging.info(f"{e} Use origin plan.")
