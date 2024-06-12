@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from threading import Thread
 import logging
 import pytz
 import json
@@ -12,7 +13,7 @@ def create_geojson_feature(ramen):
             "name": ramen.get("name", "待補"),
             "address": ramen.get("address", "暫無"),
             "weekday": current_weekday(),
-            "open": ramen["open_time"].get(current_weekday(), "不定") if "open_time" in ramen else "不定",
+            "open": ramen["open_time"].get(current_weekday(), "不定") if "open_time" and "open_time" in ramen else "不定",
             "overall": ramen.get("overall_rating", {}).get("mean", "N/A"),
             "id": ramen.get("place_id", ramen.get("name", "待補"))
         }
@@ -81,7 +82,7 @@ def setup_redis_index(collection_ramen, redis_client):
         ramen_names = list(collection_ramen.find({
             "name": {"$exists": True}, "place_id": {"$exists": True}, "address": {"$exists": True}
         }, {
-            "_id": 0, "name": 1, "place_id": 1, "address": 1
+            "_id": 1, "name": 1, "place_id": 1, "address": 1
         }))
         logging.info(f"Fetched {len(ramen_names)} ramen names.")
 
@@ -103,7 +104,7 @@ def setup_redis_index(collection_ramen, redis_client):
         # Add ramen names to Redis
         logging.info("Adding ramen names to Redis.")
         for item in ramen_names:
-            key = f"ramen:{item['name']}"
+            key = f"ramen:{str(item['_id'])}"
             redis_client.hset(key, mapping={
                 'name': item['name'],
                 'place_id': item['place_id'],
@@ -113,6 +114,33 @@ def setup_redis_index(collection_ramen, redis_client):
 
     except Exception as e:
         logging.warning(f"Failed to setup Redis index: {e}")
+
+
+def handle_change_stream(change_stream, redis_client,collection_ramen):
+    logging.info("Started listening for MongoDB change stream.")
+    for change in change_stream:
+        logging.info(f"Change detected in MongoDB: {change}")
+        if change['operationType'] in ['insert', 'update', 'replace']:
+            document = change['fullDocument']
+            key = f"ramen:{str(document['_id'])}"
+            logging.warning(f"Updating Redis cache for key: {key}")
+            redis_client.hset(key, mapping={
+                'name': document['name'],
+                'place_id': document['place_id'],
+                'address': document['address']
+            })
+        elif change['operationType'] == 'delete':
+            key = f"ramen:{str(change['documentKey']['_id'])}"
+            logging.warning(f"Deleting Redis cache for key: {key}")
+            redis_client.delete(key)
+
+
+def start_change_stream_listener(collection_ramen, redis_client):
+    change_stream = collection_ramen.watch(full_document='updateLookup')
+    change_stream_thread = Thread(target=handle_change_stream,
+                                    args=(change_stream, redis_client, collection_ramen))
+    change_stream_thread.start()
+
 
 def store_message(redis_client, room_id, date_key, message_json, timezone):
     redis_key = f"messages_{room_id}_{date_key}"
