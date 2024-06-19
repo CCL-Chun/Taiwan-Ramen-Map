@@ -42,14 +42,15 @@ Taiwan Ramen Map is designed to provide an interactive and user-friendly platfor
 
 * infra abstract
 
-  - ![infra abstract]()
+  - ![infra-abstract](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/f62c9b5f-f8f1-43c8-aa97-c7a40efe240e)
 - **Data Pipeline Automation**: Automated data pipeline triggered by EventBridge to fetch ramen information and update recommendations based on new reviews using AWS Lambda, SQS, and EC2.
 - **Service Monitoring**: Utilizes AWS CloudWatch to monitor application logs, service status, and alarm notifications.
 
 
 ## Monitoring
 ### data pipeline
-![data pipeline]()
+![data-pipeline-1](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/da229b12-de6b-4154-b759-3184792b8b4b)
+
 ### web server
 
 
