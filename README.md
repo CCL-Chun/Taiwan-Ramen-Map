@@ -17,6 +17,7 @@
 ## Table of Contents
 - [Taiwan Ramen Map](#taiwan-ramen-map)
 - [Table of Contents](#table-of-contents)
+- [Objective](#objective)
 - [Infrastructure](#infrastructure)
 - [Monitoring](#monitoring)
   - [data pipeline](#data-pipeline)
@@ -24,9 +25,10 @@
 - [HTTP load test](#http-load-test)
   - [MongoDB connection (Secondary Node Preferred)](#mongodb-connection-secondary-node-preferred)
   - [MongoDB connection (Default Primary Node)](#mongodb-connection-default-primary-node)
-- [Objective](#objective)
 - [Features](#features)
 - [CI/CD](#cicd)
+## Objective
+Taiwan Ramen Map is designed to provide an interactive and user-friendly platform for ramen enthusiasts and newcomers, offering real-time updates, dynamic searches, and similar ramen restaurant recommendations.
 
 ## Infrastructure
 ![Static Badge](https://img.shields.io/badge/MongoDB-lightgreen?style=plastic&logo=mongodb)
@@ -38,14 +40,16 @@
 ![Static Badge](https://img.shields.io/badge/CloudWatch-AWS-orange?style=plastic&logo=amazon-cloudwatch)
 ![Static Badge](https://img.shields.io/badge/S3-AWS-orange?style=plastic&logo=amazon-s3)
 
+* infra abstract
 
-![infra abstract](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/8bdbff866b7f31ef8f4b279d5d70ce8d6d946e88/infra%E4%BB%8B%E7%B4%B92.png)
+  - ![infra abstract]()
 - **Data Pipeline Automation**: Automated data pipeline triggered by EventBridge to fetch ramen information and update recommendations based on new reviews using AWS Lambda, SQS, and EC2.
 - **Service Monitoring**: Utilizes AWS CloudWatch to monitor application logs, service status, and alarm notifications.
 
 
 ## Monitoring
 ### data pipeline
+![data pipeline]()
 ### web server
 
 
@@ -60,24 +64,24 @@ Additionally, I've observed that while reading from the primary node at a rate o
 # connect to MongoDB and read from secondary node
 MongoClient(uri, server_api=ServerApi('1'),readPreference='secondaryPreferred')
 ```
+[Vegeta plot for test result](https://ccl-chun.github.io/Taiwan-Ramen-Map/vegeta_test/results_ramens_details_rps40_secondary.html)
 ```python
 # vegeta report
 Requests      [total, rate, throughput]         4800, 40.01, 39.99
 Duration      [total, attack, wait]             2m0s, 2m0s, 43.295ms
-Latencies     [min, mean, 50, 90, 95, 99, max]  
-              37.832ms, 44.075ms, 42.226ms, 47.095ms, 53.153ms, 88.793ms, 333.181ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  37.832ms, 44.075ms, 42.226ms, 47.095ms, 53.153ms, 88.793ms, 333.181ms
 Bytes In      [total, mean]                     6350400, 1323.00
 Bytes Out     [total, mean]                     0, 0.00
 Success       [ratio]                           100.00%
 Status Codes  [code:count]                      200:4800
 ```
 ### MongoDB connection (Default Primary Node)
+[Vegeta plot for test result](https://ccl-chun.github.io/Taiwan-Ramen-Map/vegeta_test/results_ramens_details_rps40.html)
 ```python
 # vegeta report
 Requests      [total, rate, throughput]         4800, 40.01, 39.98
 Duration      [total, attack, wait]             2m0s, 2m0s, 100.148ms
-Latencies     [min, mean, 50, 90, 95, 99, max]  
-              55.743ms, 262.64ms, 88.694ms, 920.439ms, 1.319s, 2.048s, 3.318s
+Latencies     [min, mean, 50, 90, 95, 99, max]  55.743ms, 262.64ms, 88.694ms, 920.439ms, 1.319s, 2.048s, 3.318s
 Bytes In      [total, mean]                     418569600, 87202.00
 Bytes Out     [total, mean]                     0, 0.00
 Success       [ratio]                           100.00%
@@ -85,17 +89,13 @@ Status Codes  [code:count]                      200:4800
 ```
 
 
-
-## Objective
-Taiwan Ramen Map is designed to provide an interactive and user-friendly platform for ramen enthusiasts and newcomers, offering real-time updates, dynamic searches, and similar ramen restaurant recommendations.
-
 ## Features
 - **Real-time Report**: Users can report and view live restaurant conditions, such as the queue length, using Flask and Socket.IO.
   - ![demo](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/real-time-demo.gif)
 - **Search by Name**: Fast query capability using RediSearch to reduce latency and lighten the load on MongoDB.
   - ![search-name-demo](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/search-name-demo.gif)
 - **Dynamic Map**: Provides dynamic search for nearby ramen restaurants, displaying unique characteristics, store details, and nearby parking options using MongoDB for fast geospatial queries.
-   - ![deom](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/dynamic-map-demo.gif)
+  - ![Dynamic Map Demo](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/dynamic-map-demo.gif)
 - **Recommendation System**: Content-based filtering with text embeddings from user reviews and comments to recommend the top 5 related ramen restaurants.
   - <img width="397" alt="recommend-demo" src="https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/7545b416-ecd2-4263-a962-2e7f4c0c0d95">
 - **Multi-vehicle Route Optimization**: Offers current fastest route planning considering public bike shares and other public transit options using a multi-stop and multi-vehicle route planner.
