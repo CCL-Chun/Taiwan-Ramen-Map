@@ -7,6 +7,11 @@ on:
       - completed
     branches:
       - main
+  push:
+    paths:
+      - 'application/**'
+    branches:
+      - main
 
 jobs:
   deploy:

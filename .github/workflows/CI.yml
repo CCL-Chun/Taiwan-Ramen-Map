@@ -7,11 +7,13 @@ on:
   push:
     paths:
       - 'application/**'
+      - '.github/workflows/ci.yml'
     branches: 
       - main
   pull_request:
     paths:
       - 'application/**'
+      - '.github/workflows/ci.yml'
     branches: 
       - main
 
