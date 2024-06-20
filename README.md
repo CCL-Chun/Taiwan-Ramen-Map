@@ -40,16 +40,16 @@ Taiwan Ramen Map is designed to provide an interactive and user-friendly platfor
 ![Static Badge](https://img.shields.io/badge/CloudWatch-AWS-orange?style=plastic&logo=amazon-cloudwatch)
 ![Static Badge](https://img.shields.io/badge/S3-AWS-orange?style=plastic&logo=amazon-s3)
 
-* infra abstract
-
-  - ![infra-abstract](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/f62c9b5f-f8f1-43c8-aa97-c7a40efe240e)
+* infra abstract ![infra-abstract](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/f62c9b5f-f8f1-43c8-aa97-c7a40efe240e)
 - **Data Pipeline Automation**: Automated data pipeline triggered by EventBridge to fetch ramen information and update recommendations based on new reviews using AWS Lambda, SQS, and EC2.
 - **Service Monitoring**: Utilizes AWS CloudWatch to monitor application logs, service status, and alarm notifications.
 
 
 ## Monitoring
 ### data pipeline
-![data-pipeline-1](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/da229b12-de6b-4154-b759-3184792b8b4b)
+* Flow cahrt ![data-pipeline-1](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/da229b12-de6b-4154-b759-3184792b8b4b)
+* Dashboard ![CloudWatch LambdaCrawlerDashboard screenshot](https://github.com/CCL-Chun/Taiwan-Ramen-Map/assets/56715642/b8c557aa-08e6-4ae9-8b2e-d01eb81e0ce7)
+
 
 ### web server
 
@@ -103,7 +103,5 @@ Status Codes  [code:count]                      200:4800
   - Route planner will show routes on map and cooperate with navigation instructions of each sub-route.
   - Route planner will suggest a combined route considering YouBike2.0 as vehicle if the origin plan needs bus change.
   - ![deom](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/route-plan-demo.gif)
-
-
 
 ## CI/CD
