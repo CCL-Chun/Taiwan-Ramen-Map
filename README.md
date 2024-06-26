@@ -1,6 +1,9 @@
-[![CI for Taiwan-Ramen-Map](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/CI.yml/badge.svg)](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/CI.yml)
-[![CD for Taiwan-Ramen-Map](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/deploy.yml/badge.svg)](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/deploy.yml)
-
+[![CI for Taiwan-Ramen-Map](https://img.shields.io/github/actions/workflow/status/CCL-Chun/Taiwan-Ramen-Map/CI.yml?style=plastic&label=CI
+)](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/CI.yml)
+[![CD for Taiwan-Ramen-Map](https://img.shields.io/github/actions/workflow/status/CCL-Chun/Taiwan-Ramen-Map/deploy.yml?style=plastic&label=CD
+)](https://github.com/CCL-Chun/Taiwan-Ramen-Map/actions/workflows/deploy.yml)
+[![codecov](https://img.shields.io/codecov/c/github/CCL-Chun/Taiwan-Ramen-Map?token=WF853T4QT2&style=plastic&logo=codecov&color=red
+)](https://codecov.io/github/CCL-Chun/Taiwan-Ramen-Map)
 ![Static Badge](https://img.shields.io/badge/Python-3.12.2-blue?style=plastic&logo=python)
 ![Static Badge](https://img.shields.io/badge/Flask-2.3.1-orange?style=plastic&logo=flask)
 ![Static Badge](https://img.shields.io/badge/Socket.IO-4.7.4-white?style=plastic&logo=socket.io&labelColor=black)
@@ -105,3 +108,32 @@ Status Codes  [code:count]                      200:4800
   - ![deom](https://github.com/CCL-Chun/Taiwan-Ramen-Map/blob/4c2fc8a4250271334e2650294aed02075e2fe4d1/route-plan-demo.gif)
 
 ## CI/CD
+
+
+* Test report had uploaded to [Codecov](https://codecov.io/github/CCL-Chun/Taiwan-Ramen-Map) during CI workflow [![codecov](https://img.shields.io/codecov/c/github/CCL-Chun/Taiwan-Ramen-Map?token=WF853T4QT2&style=plastic&logo=codecov&color=red
+)](https://codecov.io/github/CCL-Chun/Taiwan-Ramen-Map)
+```
+---------- coverage: platform linux, python 3.12.2-final-0 -----------
+Name                                                    Stmts   Miss  Cover
+---------------------------------------------------------------------------
+application/config.py                                      14      0   100%
+application/server/__init__.py                             42     14    67%
+application/server/controllers/__init__.py                  0      0   100%
+application/server/controllers/ramen_controller.py         39     20    49%
+application/server/controllers/search_controller.py        30     22    27%
+application/server/controllers/socketio_controller.py      40     22    45%
+application/server/controllers/traffic_controller.py      139    128     8%
+application/server/models/Database.py                      14      7    50%
+application/server/models/Redis.py                         20     13    35%
+application/server/models/__init__.py                       0      0   100%
+application/server/views.py                                19      7    63%
+application/tests/__init__.py                               0      0   100%
+application/tests/conftest.py                              52     27    48%
+application/tests/integration/test_integration.py          15      0   100%
+application/tests/test_utils.py                            65      0   100%
+application/utils.py                                       87     58    33%
+---------------------------------------------------------------------------
+TOTAL                                                     576    318    45%
+Coverage XML written to file coverage.xml
+======================== 9 passed, 4 warnings in 0.33s =========================
+```
